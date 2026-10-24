@@ -29,7 +29,7 @@ jobs:
           curl -fsS http://localhost:8080/api/v1/dashboard | grep -q minutes_week
           curl -fsS http://localhost:8080/api/v1/home | grep -q recently_added
           curl -fsS http://localhost:8080/api/v1/books | grep -q '"total":0'
-          curl -sS -o /dev/null -w '%{http_code}' http://localhost:8080/opds | grep -q 401
+          curl -fsS http://localhost:8080/opds | grep -q '<feed'
           curl -fsS http://localhost:8080/ | grep -q '<div id="root">'
   docker:
     runs-on: ubuntu-latest
