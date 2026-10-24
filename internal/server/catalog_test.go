@@ -163,3 +163,46 @@ func TestBookSortOrder(t *testing.T) {
 		}
 	}
 }
+
+// Removing a tag takes it off every book and keeps it off when the book is
+// written again (a rescan); merging renames it, for later books too.
+func TestTagRules(t *testing.T) {
+	f := newDevFixture(t)
+	ctx := context.Background()
+	b2, err := f.st.CreateBook(ctx, 1, "/two", store.BookMeta{Title: "Two", Tags: []string{"Polaris CD2", "sf", "Science fiction"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.UpsertFile(ctx, &store.File{BookID: b2, LibraryID: 1, Path: f.dir + "/books/two.epub", Format: "epub"}); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, _ := f.do(f.bobTok, "POST", "/api/v1/tags/remove", map[string]any{"names": []string{"sf"}}); code != http.StatusForbidden {
+		t.Fatalf("member removed tags: %d", code)
+	}
+	f.json(f.anaTok, "POST", "/api/v1/tags/remove", map[string]any{"names": []string{"Polaris CD2"}}, http.StatusOK, nil)
+	f.json(f.anaTok, "POST", "/api/v1/tags/merge", map[string]any{"names": []string{"sf"}, "into": "Science fiction"}, http.StatusOK, nil)
+	tags := func() []string {
+		b, err := f.st.GetBookAny(ctx, b2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return b.Tags
+	}
+	if got := tags(); len(got) != 1 || got[0] != "Science fiction" {
+		t.Fatalf("after clean-up: %v", got)
+	}
+	// a rescan writes the file's tags again: the rules still apply
+	if err := f.st.SaveBookMeta(ctx, b2, store.BookMeta{Title: "Two", Tags: []string{"Polaris CD2", "SF", "Space"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := tags(); len(got) != 2 || got[0] != "Science fiction" || got[1] != "Space" {
+		t.Fatalf("after a rescan: %v", got)
+	}
+	f.json(f.anaTok, "POST", "/api/v1/tags/allow", map[string]any{"names": []string{"Polaris CD2"}}, http.StatusOK, nil)
+	if err := f.st.SaveBookMeta(ctx, b2, store.BookMeta{Title: "Two", Tags: []string{"Polaris CD2"}}); err != nil {
+		t.Fatal(err)
+	}
+	if got := tags(); len(got) != 1 || got[0] != "Polaris CD2" {
+		t.Fatalf("allowed again: %v", got)
+	}
+}

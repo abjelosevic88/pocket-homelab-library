@@ -40,6 +40,10 @@ func (s *Server) routesCatalog(api chi.Router) {
 	api.Get("/series/{id}", s.handleSeries)
 	api.Put("/series/{id}", s.handleEditSeries)
 	api.Get("/tags", s.handleTags)
+	api.Get("/tags/rules", s.handleTagRules)
+	api.Post("/tags/remove", s.handleRemoveTags)
+	api.Post("/tags/merge", s.handleMergeTags)
+	api.Post("/tags/allow", s.handleAllowTag)
 	api.Get("/facets", s.handleFacets)
 
 	api.Get("/shelves", s.handleShelves)
@@ -792,6 +796,98 @@ func (s *Server) handleTags(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, tags)
+}
+
+// handleTagRules lists the tags removed from the library and the merges (editors).
+func (s *Server) handleTagRules(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEditor(w, r) {
+		return
+	}
+	writeJSON(w, http.StatusOK, s.store.GetTagRules(r.Context()))
+}
+
+func (s *Server) tagNames(w http.ResponseWriter, r *http.Request, into *string) []string {
+	var in struct {
+		Names []string `json:"names"`
+		Into  string   `json:"into"`
+	}
+	if err := decode(r, &in); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid json")
+		return nil
+	}
+	var names []string
+	for _, n := range in.Names {
+		if n = strings.TrimSpace(n); n != "" {
+			names = append(names, n)
+		}
+	}
+	if len(names) == 0 {
+		writeErr(w, http.StatusBadRequest, "send the names of the tags")
+		return nil
+	}
+	if into != nil {
+		*into = strings.TrimSpace(in.Into)
+		if *into == "" {
+			writeErr(w, http.StatusBadRequest, "send the tag to merge into")
+			return nil
+		}
+	}
+	return names
+}
+
+// handleRemoveTags takes tags off every book; scans won't bring them back.
+func (s *Server) handleRemoveTags(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEditor(w, r) {
+		return
+	}
+	names := s.tagNames(w, r, nil)
+	if names == nil {
+		return
+	}
+	n, err := s.store.RemoveTags(r.Context(), names)
+	if err != nil {
+		s.fail(w, err, "remove tags")
+		return
+	}
+	s.log.Info("tags removed", "tags", names, "books", n, "by", userFrom(r.Context()).Email)
+	writeJSON(w, http.StatusOK, map[string]int{"books": n})
+}
+
+// handleMergeTags renames tags into one on every book, and for books to come.
+func (s *Server) handleMergeTags(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEditor(w, r) {
+		return
+	}
+	var into string
+	names := s.tagNames(w, r, &into)
+	if names == nil {
+		return
+	}
+	n, err := s.store.MergeTags(r.Context(), names, into)
+	if err != nil {
+		s.fail(w, err, "merge tags")
+		return
+	}
+	s.log.Info("tags merged", "tags", names, "into", into, "books", n, "by", userFrom(r.Context()).Email)
+	writeJSON(w, http.StatusOK, map[string]int{"books": n})
+}
+
+// handleAllowTag lifts a removal or merge (books get the tag back on their next scan).
+func (s *Server) handleAllowTag(w http.ResponseWriter, r *http.Request) {
+	if !s.requireEditor(w, r) {
+		return
+	}
+	names := s.tagNames(w, r, nil)
+	if names == nil {
+		return
+	}
+	for _, n := range names {
+		if err := s.store.AllowTag(r.Context(), n); err != nil {
+			s.fail(w, err, "allow tag")
+			return
+		}
+	}
+	writeJSON(w, http.StatusOK, s.store.GetTagRules(r.Context()))
 }
 
 func (s *Server) handleFacets(w http.ResponseWriter, r *http.Request) {

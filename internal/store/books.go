@@ -128,6 +128,7 @@ func (m *BookMeta) clean() {
 // CreateBook inserts a book in a library with its metadata and returns its id.
 func (s *Store) CreateBook(ctx context.Context, libraryID int64, groupKey string, m BookMeta) (int64, error) {
 	m.clean()
+	m.Tags = s.applyTagRules(ctx, m.Tags)
 	ids, _ := json.Marshal(m.Identifiers)
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -161,6 +162,7 @@ func (s *Store) CreateBook(ctx context.Context, libraryID int64, groupKey string
 // SaveBookMeta overwrites a book's metadata (callers decide what locked fields keep).
 func (s *Store) SaveBookMeta(ctx context.Context, id int64, m BookMeta) error {
 	m.clean()
+	m.Tags = s.applyTagRules(ctx, m.Tags)
 	ids, _ := json.Marshal(m.Identifiers)
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {

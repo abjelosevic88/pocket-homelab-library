@@ -37,10 +37,8 @@ func readPDF(path string, wantCover bool) (*Meta, error) {
 					m.Authors = splitPDFAuthors(v)
 				case "Subject":
 					m.Description = v
-				case "Keywords":
-					for _, t := range strings.FieldsFunc(v, func(r rune) bool { return r == ',' || r == ';' }) {
-						m.Tags = append(m.Tags, t)
-					}
+				// Keywords are left out: in practice they are what the converting
+				// tool wrote about itself ("Document Converter Pro", a web address).
 				case "Pages":
 					m.Pages, _ = strconv.Atoi(v)
 				}

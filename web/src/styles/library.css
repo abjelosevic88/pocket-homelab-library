@@ -294,3 +294,26 @@
 /* the page scrolls up and down only: rows of covers scroll inside themselves */
 .content { overflow-x: hidden; }
 @media (max-width: 767px) { .book-page .glow { left: -14px; right: -14px; } }
+
+/* tags: a list, most used first */
+.tags-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 14px 0 10px; }
+.tags-rare { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); cursor: pointer; }
+.tags-help { margin: 0 0 10px; }
+.tag-list { list-style: none; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--surface); overflow: hidden; }
+.tag-list li + li { border-top: 1px solid var(--hairline); }
+.tag-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 14px; color: var(--text); text-decoration: none; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.tag-row:hover { background: var(--accent-soft); }
+.tag-row.picked { background: var(--accent-soft); }
+.tag-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-bar { flex: 0 0 72px; height: 6px; border-radius: 3px; background: var(--hairline); overflow: hidden; }
+.tag-bar span { display: block; height: 100%; border-radius: 3px; background: var(--accent); opacity: .55; }
+.tag-n { flex: 0 0 auto; min-width: 2.5em; text-align: right; color: var(--muted); font-size: 13px; }
+.tag-go { color: var(--faint); flex: 0 0 auto; }
+.tag-check { flex: 0 0 auto; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border-strong); display: grid; place-items: center; color: #fff; }
+.tag-check.on { background: var(--accent); border-color: var(--accent); }
+.tag-rules { margin-top: 18px; }
+.tag-rules summary { cursor: pointer; padding: 8px 0; font-weight: 550; }
+.tag-rules ul { list-style: none; margin: 0; padding: 0; }
+.tag-rules li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--hairline); }
+.tags-actions { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
+@media (max-width: 520px) { .tag-bar { flex-basis: 44px; } }
