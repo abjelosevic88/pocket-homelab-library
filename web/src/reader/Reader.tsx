@@ -9,6 +9,7 @@ import { useApp } from '../lib/app-context'
 import type { Annotation, Settings } from '../lib/types'
 import { Icon } from '../components/icons'
 import { Spinner, copyText, errMsg, useToast } from '../components/ui'
+import { useAskAvailable } from '../components/AskButton'
 import type { EngineApi, ReaderData, RelocateInfo, SearchHit, SelectionInfo, TocItem } from './engine'
 import { DEFAULT_COMIC, DEFAULT_PREFS, FONTS, HIGHLIGHT_COLORS, THEMES, colorOf, parsePrefs, resolveTheme, type ComicPrefs, type ReaderPrefs, type ReaderTheme } from './prefs'
 import { ProgressReporter } from './progress'
@@ -31,6 +32,7 @@ export default function Reader() {
   const [params, setParams] = useSearchParams()
   const fileParam = params.get('file')
   const navigate = useNavigate()
+  const ask = useAskAvailable()
   const { settings, setSettings } = useApp()
   const { toast } = useToast()
 
@@ -273,6 +275,9 @@ export default function Reader() {
           <button type="button" className={`rd-btn ${bookmark ? 'on mark' : ''}`} onClick={toggleBookmark} aria-label={bookmark ? 'Remove the bookmark' : 'Bookmark this page'} title="Bookmark (b)"><Icon name={bookmark ? 'bookmark' : 'bookmark-plus'} size={18} /></button>
           <button type="button" className={`rd-btn rd-aa ${panel === 'settings' ? 'on' : ''}`} onClick={() => setPanel(p => p === 'settings' ? null : 'settings')} aria-label="Reading settings" title="Reading settings">Aa</button>
           {readable.length > 1 && <button type="button" className={`rd-btn ${panel === 'files' ? 'on' : ''}`} onClick={() => setPanel(p => p === 'files' ? null : 'files')} aria-label="Formats" title="Formats"><Icon name="layers" size={18} /></button>}
+          {ask && <button type="button" className="rd-btn" data-pocket-ask-trigger onClick={() => window.dispatchEvent(new CustomEvent('pocket-ask'))} aria-label="Ask AI about this book" title="Ask AI about this book" aria-haspopup="dialog">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9.9 4.6 11 8l3.4 1.1L11 10.2 9.9 13.6 8.8 10.2 5.4 9.1 8.8 8Z" /><path d="M17 3v3M15.5 4.5h3M17.5 14.5v4M15.5 16.5h4" /></svg>
+          </button>}
           <button type="button" className="rd-btn rd-hide-s" onClick={toggleFullscreen} aria-label="Full screen" title="Full screen (f)"><Icon name={document.fullscreenElement ? 'fullscreen-exit' : 'fullscreen'} size={18} /></button>
         </div>
       </header>

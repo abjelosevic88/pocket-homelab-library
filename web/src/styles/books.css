@@ -398,7 +398,8 @@ a.top-row:hover { background: var(--hover); }
 .book-genres { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 0; }
 .book-genres .chip { text-decoration: none; }
 .book-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 32px; align-items: flex-start; }
-@media (max-width: 1000px) { .book-cols { grid-template-columns: 1fr; } }
+@media (max-width: 1000px) { .book-cols { grid-template-columns: minmax(0, 1fr); } }
+.book-cols > * { min-width: 0; }
 .book-desc { font-size: 14.5px; line-height: 1.65; color: var(--text-2); max-width: 75ch; white-space: pre-line; }
 .book-desc p { margin: 0 0 10px; }
 .book-desc.clamp { display: -webkit-box; -webkit-line-clamp: 8; -webkit-box-orient: vertical; overflow: hidden; }

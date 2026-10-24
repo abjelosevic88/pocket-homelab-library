@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react'
 
-/** Ask in the header at every screen size. While this button is on the page,
- *  the launcher hides its own floating pill ([data-pocket-ask-trigger]). */
-export function AskButton() {
+/** Whether the Pocket Core Ask launcher is on the page (the app is connected to Core). */
+export function useAskAvailable() {
   const [available, setAvailable] = useState(() => !!document.querySelector('pocket-ask-launcher'))
   useEffect(() => {
     const ready = () => setAvailable(!!document.querySelector('pocket-ask-launcher'))
@@ -10,6 +9,13 @@ export function AskButton() {
     ready()
     return () => window.removeEventListener('pocket-ask-available', ready)
   }, [])
+  return available
+}
+
+/** Ask in the header at every screen size. While this button is on the page,
+ *  the launcher hides its own floating pill ([data-pocket-ask-trigger]). */
+export function AskButton() {
+  const available = useAskAvailable()
   if (!available) return null
   return (
     <button type="button" className="btn ghost ask-header-btn" data-pocket-ask-trigger

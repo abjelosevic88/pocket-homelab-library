@@ -291,3 +291,6 @@
 .grid-people { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
 .person-photo { width: 150px; }
 @media (max-width: 767px) { .person-hero { flex-direction: column; align-items: flex-start; } .person-photo { width: 110px; } }
+/* the page scrolls up and down only: rows of covers scroll inside themselves */
+.content { overflow-x: hidden; }
+@media (max-width: 767px) { .book-page .glow { left: -14px; right: -14px; } }
