@@ -22,18 +22,30 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
     go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /out/pocket-library ./cmd/pocket-library
 
 # ---------- 3. runtime ----------
-FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata curl \
- && addgroup -g 1000 app && adduser -u 1000 -G app -D -h /data app
+# Debian, so calibre's own build runs when it is wanted (WITH_CALIBRE=true:
+# conversions such as MOBI → EPUB for Send to Kindle; amd64 and arm64 only).
+# poppler-utils gives PDF covers and page counts.
+FROM debian:bookworm-slim
+ARG WITH_CALIBRE=false
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates tzdata curl poppler-utils \
+ && if [ "$WITH_CALIBRE" = "true" ]; then \
+      apt-get install -y --no-install-recommends xz-utils python3 libegl1 libopengl0 libglx0 libxcb-cursor0 libxkbcommon0 libnss3 libfontconfig1 libfreetype6 libxdamage1 libxrandr2 libxcomposite1 libxtst6 libxkbfile1 libasound2 \
+      && curl -fsSL https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin install_dir=/opt isolated=y \
+      && ln -s /opt/calibre/ebook-convert /usr/local/bin/ebook-convert \
+      && apt-get purge -y xz-utils && apt-get autoremove -y; \
+    fi \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd -g 1000 app && useradd -u 1000 -g app -d /data -M app
 COPY --from=build /out/pocket-library /usr/local/bin/pocket-library
-ENV DATA_DIR=/data PORT=8080 HOST=0.0.0.0
+ENV DATA_DIR=/data PORT=8080 HOST=0.0.0.0 QT_QPA_PLATFORM=offscreen
 VOLUME ["/data"]
 EXPOSE 8080
 USER app
 WORKDIR /data
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 CMD curl -fsS http://localhost:8080/healthz || exit 1
 LABEL org.opencontainers.image.title="Pocket Library" \
-      org.opencontainers.image.description="Audiobooks for the household on top of Audiobookshelf: a web player that keeps your place in step with the phone apps, chapters, bookmarks, sleep timer, series and authors, up next, and a listening history with stats." \
+      org.opencontainers.image.description="Every ebook, comic and manga in one place: a library that files and fixes your books, reads EPUB, PDF, MOBI, comics and manga in the browser, keeps your place with KOReader and CrossPoint, and sends books to your Kindle and e-readers." \
       org.opencontainers.image.source="https://github.com/abjelosevic88/pocket-homelab-library" \
       org.opencontainers.image.licenses="MIT"
 ENTRYPOINT ["pocket-library"]

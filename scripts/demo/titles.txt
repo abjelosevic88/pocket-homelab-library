@@ -1,0 +1,31 @@
+# gutenberg id | author | title
+1342|Jane Austen|Pride and Prejudice
+161|Jane Austen|Sense and Sensibility
+158|Jane Austen|Emma
+84|Mary Wollstonecraft Shelley|Frankenstein
+345|Bram Stoker|Dracula
+11|Lewis Carroll|Alice's Adventures in Wonderland
+12|Lewis Carroll|Through the Looking-Glass
+1661|Arthur Conan Doyle|The Adventures of Sherlock Holmes
+2852|Arthur Conan Doyle|The Hound of the Baskervilles
+244|Arthur Conan Doyle|A Study in Scarlet
+35|H. G. Wells|The Time Machine
+36|H. G. Wells|The War of the Worlds
+5230|H. G. Wells|The Invisible Man
+2701|Herman Melville|Moby Dick
+98|Charles Dickens|A Tale of Two Cities
+1400|Charles Dickens|Great Expectations
+46|Charles Dickens|A Christmas Carol
+1260|Charlotte Brontë|Jane Eyre
+768|Emily Brontë|Wuthering Heights
+2554|Fyodor Dostoyevsky|Crime and Punishment
+28054|Fyodor Dostoyevsky|The Brothers Karamazov
+1399|Leo Tolstoy|Anna Karenina
+2600|Leo Tolstoy|War and Peace
+174|Oscar Wilde|The Picture of Dorian Gray
+844|Oscar Wilde|The Importance of Being Earnest
+120|Robert Louis Stevenson|Treasure Island
+43|Robert Louis Stevenson|The Strange Case of Dr. Jekyll and Mr. Hyde
+76|Mark Twain|Adventures of Huckleberry Finn
+74|Mark Twain|The Adventures of Tom Sawyer
+64317|F. Scott Fitzgerald|The Great Gatsby

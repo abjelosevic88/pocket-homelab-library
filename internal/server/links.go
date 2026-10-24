@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
 	core "github.com/abjelosevic88/pocket-homelab-core/sdk"
+	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
 )
 
 // Pocket Core app links (docs/links.md in pocket-homelab-core).

@@ -38,7 +38,7 @@ func (s *Server) publicSettings(ctx context.Context, u *store.User, st store.Set
 		"opds_enabled": st.OPDSEnabled, "kosync_enabled": st.KosyncEnabled, "ingest_enabled": st.IngestEnabled,
 		"ingest_dir": "", "convert_available": s.cfg.ConvertPath() != "",
 		"smtp_configured": st.SMTPHost != "" && st.SMTPFrom != "",
-		"date_format": st.DateFormat, "time_format": st.TimeFormat,
+		"date_format":     st.DateFormat, "time_format": st.TimeFormat,
 		"reader_prefs": st.ReaderPrefs, "comic_prefs": st.ComicPrefs,
 		"hidden_libraries": st.HiddenLibraries, "default_device": st.DefaultDevice,
 		"library_view": st.LibraryView, "card_size": st.CardSize,

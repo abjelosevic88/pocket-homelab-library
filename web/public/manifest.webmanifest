@@ -1,6 +1,6 @@
 {
   "name": "Pocket Library",
-  "short_name": "Audiobooks",
+  "short_name": "Library",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#f5f6f8",
@@ -35,7 +35,7 @@
   ],
   "shortcuts": [
     {
-      "name": "Continue listening",
+      "name": "Continue reading",
       "url": "/?continue=1"
     },
     {
@@ -43,9 +43,9 @@
       "url": "/library"
     },
     {
-      "name": "Stats",
-      "url": "/stats"
+      "name": "Highlights",
+      "url": "/highlights"
     }
   ],
-  "description": "Audiobooks for the whole household, on top of Audiobookshelf."
+  "description": "Every ebook, comic and manga in one place: read, collect, and send to your Kindle and e-readers."
 }

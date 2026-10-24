@@ -200,7 +200,7 @@ func (s *Store) SetLocked(ctx context.Context, id int64, fields []string) error 
 	return err
 }
 
-// SetBookCover sets the cover file name ('' = none) and its average colour.
+// SetBookCover sets the cover file name (” = none) and its average colour.
 func (s *Store) SetBookCover(ctx context.Context, id int64, name, color string) error {
 	_, err := s.DB.ExecContext(ctx, `UPDATE books SET cover = ?, cover_color = ?, updated_at = ? WHERE id = ?`, name, color, Now(), id)
 	return err
@@ -681,7 +681,7 @@ func (q *BookQuery) orderBy() string {
 			seed = 7
 		}
 		// stable for a seed, so paging through a shuffle shows each book once
-		return fmt.Sprintf("((b.id * %d + %d) %% 2147483647)", 48271, seed%2147483647)
+		return fmt.Sprintf("(((b.id + %d) * 2654435761) %% 4294967291), b.id", seed%1000003)
 	}
 	return "b.sort_title COLLATE NOCASE" + dir(false) + ", b.id"
 }
@@ -698,9 +698,9 @@ func scanBook(row interface{ Scan(...any) error }) (*Book, error) {
 	var ids, locked string
 	var st struct {
 		status, locator, lastRead, lastDevice, started, finished, updated sql.NullString
-		rating, timesRead, fileID                                           sql.NullInt64
-		fav, hidden                                                         sql.NullBool
-		pct                                                                 sql.NullFloat64
+		rating, timesRead, fileID                                         sql.NullInt64
+		fav, hidden                                                       sql.NullBool
+		pct                                                               sql.NullFloat64
 	}
 	if err := row.Scan(&b.ID, &b.LibraryID, &b.GroupKey, &b.Title, &b.SortTitle, &b.Subtitle, &b.Language, &b.Publisher, &b.Published, &b.ISBN, &ids,
 		&b.SeriesID, &b.Series, &b.SeriesIndex, &b.Pages, &b.Words, &b.Kind, &b.ReadingDirection, &b.AgeRating,

@@ -12,7 +12,7 @@ web:                       ## build the React UI into web/dist
 build:                     ## build the Go binary (embeds web/dist)
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o pocket-library ./cmd/pocket-library
 
-run: build                 ## run locally without login (set AUDIOBOOKSHELF_URL + AUDIOBOOKSHELF_TOKEN for a library)
+run: build                 ## run locally without login (LIBRARIES="Books=/path/to/books")
 	DATA_DIR=./data AUTH_MODE=none LOG_LEVEL=debug ./pocket-library
 
 dev:                       ## backend on :8080 + vite dev server on :5173 with hot reload
@@ -29,8 +29,8 @@ lint:
 docker:                    ## build the container image for the local platform
 	docker build --build-arg VERSION=$(VERSION) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest .
 
-docker-multiarch:          ## build & push amd64 + arm64 + armv7 (needs buildx)
-	docker buildx build --platform linux/amd64,linux/arm64,linux/arm/v7 --build-arg VERSION=$(VERSION) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --push .
+docker-multiarch:          ## build & push amd64 + arm64 (needs buildx)
+	docker buildx build --platform linux/amd64,linux/arm64 --build-arg VERSION=$(VERSION) -t $(IMAGE):$(VERSION) -t $(IMAGE):latest --push .
 
 backup:                    ## snapshot the local database
 	./pocket-library backup

@@ -1,67 +1,59 @@
 # How it works
 
-## Why on top of Audiobookshelf, not instead of it
+## Your folders are the library
 
-An audiobook server is mostly plumbing Audiobookshelf already does well: scanning folders into books (one file or
-fifty), chapters, matching metadata and covers on Audible and Google, transcoding what a client can't play, and the
-API the phone apps (Audiobookshelf, AudioBooth, Plappa…) speak, with offline downloads and CarPlay. Rewriting that
-would take months and cut off every phone in the house.
+Pocket Library reads your book folders as they are and never rearranges them. A scan walks every library's
+folders, groups the files of one book (an EPUB, a MOBI and a PDF with the same name in the same folder are one
+book with three formats; a Calibre-style folder with a `metadata.opf` is one book), and reads its metadata in this
+order: a sidecar `.opf` next to the file (what Calibre and Calibre-Web write), then the file itself (EPUB, AZW3,
+MOBI, FB2, PDF, ComicInfo.xml in comics), then the file name. Rescans only open files whose size or date changed,
+so a library of ten thousand books rescans in seconds.
 
-What its own web client doesn't do as well is the listening around the books: a calm player that keeps your place
-in step with the phone, a history you own with stats and streaks, a queue of what's next, and a place in the rest of
-the Pocket apps. That is Pocket Library:
+Anything you edit by hand is **locked**: a scan never overwrites it. The files on disk are never changed either;
+when you download or send an EPUB, the metadata edited here is written into a copy.
 
-| Audiobookshelf | Pocket Library |
-|---|---|
-| Files, scanning, chapters, metadata, covers | A fast, calm web app for the household, desktop and phone |
-| Each account's place, finished marks, bookmarks | A player that plays the files as they are (or HLS when the browser can't) and writes your place back every 15 seconds |
-| Listening sessions from every app | A listening history it owns, with stats, streaks, a daily goal and a day view |
-| The API every phone app speaks | Up next, series and authors pages, "continue on the phone / continue here" |
-| | Pocket Core: one sign-in, per-person logins, Pocket Day and Pocket Bookshelf through app links |
+Comics and manga libraries treat every archive (CBZ, CBR, CB7, CBT) as one issue or chapter, with the folder as
+the series and the number from ComicInfo or the file name. Manga reads right to left.
 
-The split mirrors Pocket Watch on Jellyfin, Pocket Music on Navidrome and Pocket Photos on Immich. Keep using the
-phone apps: they share your place, finished books and bookmarks with Pocket Library because both act as the
-same Audiobookshelf account.
+## Calibre-Web and Kavita, in one app
+
+| Calibre-Web (Automated) | Kavita | Pocket Library |
+|---|---|---|
+| Calibre library, metadata editing, fetch metadata | Folder libraries, series, reading lists | Folder libraries with sidecar-OPF metadata, editing with locks, Open Library + Google Books, bulk edits |
+| Send to Kindle, conversions | — | Send to Kindle with Amazon's EPUB fixes and edited metadata, to the Xteink X4 (push or catalogue), to KOReader (plugin); conversions with calibre |
+| Ingest folder, duplicates | — | Ingest folder and uploads filed by a template, duplicates by file, ISBN and title |
+| OPDS, Kobo sync, KOReader sync | OPDS, KOReader sync | OPDS for KOReader and CrossPoint, KOReader sync that also moves your place between the web reader, devices and formats |
+| Basic EPUB reader | EPUB, PDF, comic and manga reader | One reader for EPUB, MOBI, AZW3, FB2, PDF, comics and manga, with highlights, notes, bookmarks, search and reading time |
+| Shelves, read status | Collections, want to read, ratings, stats | Shelves (hand-picked, reading lists, smart), status with finish dates, half-star ratings, stats, streaks, goals |
+
+Settings → Import brings over what lived in them: Kindle addresses and the mail account from Calibre-Web, shelves
+and read status, and from Kavita everyone's progress, ratings, collections and reading lists.
+
+## Your place, everywhere
+
+Each person has one place per book. The web reader reports it as you read; KOReader and CrossPoint report it
+through the KOReader sync protocol at `/kosync`. A device knows a book by a hash of its file (or of its file
+name, CrossPoint's default); Pocket Library knows every file's hash, so a position lands on the right book even
+when the device's copy came from somewhere else. When the book was read further somewhere else, a device asking
+for its position gets that place translated for its own file: an XPointer for an EPUB (KOReader's way of pointing
+into a chapter), a page for a PDF or a comic. So you can read on the X4 in bed, carry on in the browser at lunch,
+and finish on a Kindle with KOReader.
+
+Reading time comes from the web reader (time with the book open and in use), from KOReader's own statistics
+(the plugin), or is estimated from pages turned when a device only sends a position; estimated time is marked.
 
 ## Per person, always
 
-Everyone signs in to Pocket Library with their own account and listens with **their own** Audiobookshelf
-account: an API key made for them, a refresh token from signing in once (the password itself is never kept), or the
-login Pocket Core holds for them. A key Pocket Core hands out is checked against the person's Audiobookshelf user id,
-so a box-wide admin key is never used as somebody else. History, finished books, Up next and settings are keyed by
-person; another person's ids answer 404 and admins get no read access to anyone's listening.
+Everyone signs in with their own account (or Sign in with Pocket Core). The books are the household's, through
+libraries; what each person does with them (place, reads, ratings, highlights, shelves, devices, sends) is
+theirs alone, and admins can't see it. Members can be allowed to edit metadata and upload.
 
-## Playing
+## Pocket apps
 
-The browser asks `POST /play/{book}` with the audio types it can decode. Pocket Library opens an Audiobookshelf
-**playback session** as the person — exactly what the phone apps do — and answers with the book's files laid out on
-one timeline (`start` + `duration` each), the chapters and the person's place. If every file fits the browser it
-plays them **as they are** (byte ranges, nothing for the server to do), one after the other; otherwise
-Audiobookshelf makes one HLS stream, played with hls.js (or natively in Safari). If a browser claims a type and then
-can't decode it, the player asks again with `force_transcode` and remembers the type.
+With Pocket Core, Pocket Library joins the other apps: one sign-in, events on the bus (`library.started`,
+`library.finished`, `library.highlighted`, `library.sent`), and links:
 
-The browser never sees an Audiobookshelf key: every file, playlist and segment goes through
-`/api/v1/media/…`, where the person's key is added on the way.
-
-Every 15 seconds while playing, and on pause, the player reports where it is and how many seconds it played
-(`/sessions/{id}/sync`). Audiobookshelf moves the person's place and keeps the session, so the phone picks up where
-the web stopped. Closing the tab sends a last report (`sendBeacon`). If Audiobookshelf restarted and forgot the
-session, the place is written directly and a new session takes over.
-
-Around the player: chapters (previous/next on the lock screen and headphone buttons), speed per book, skip back and
-forward, a few seconds back after a long pause, a sleep timer (minutes or the end of the chapter), bookmarks (kept in
-Audiobookshelf), and at the end of a book the next one — from Up next, else the next in its series.
-
-**Playing elsewhere.** `GET /now-playing` looks at the person's newest Audiobookshelf listening session (and at
-other browsers on this app): when the phone is playing and this browser isn't, the bar shows "Playing on Ana's
-iPhone" with a ticking clock and **Continue here**, which opens the book at that moment.
-
-## History
-
-Audiobookshelf saves a listening session for every stretch someone listens, in any app. Every `SYNC_EVERY` (and
-soon after this app's player reports) the sessions that changed since the last look are copied here; the first look
-copies them all. One row per session: the book (copied, so it survives the file leaving the library), when, how many
-seconds, from where to where, on which device. Finished books come from the person's finished marks.
-
-Stats, the day view (`/day/{date}`, which Pocket Day can read through an app link), the weekly recap, streaks and
-the `audiobooks.finished` event all come from these rows.
+- **Pocket Bookshelf** follows your reading here: a finished ebook becomes a read on your shelves, a book you are
+  reading moves its page, highlights become quotes. Its rating and status show on the book page here.
+- **Pocket Day** can read a day of reading (`/day/<date>`) for the journal.
+- **Pocket Hub** and Homepage show it with its icon; `/api/v1/dashboard` feeds a Homepage widget.

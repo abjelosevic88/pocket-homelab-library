@@ -94,9 +94,6 @@ type Config struct {
 	CoreURL             string
 	CoreRegistrationKey string
 	CoreAppURL          string // how Core reaches this app; defaults to BASE_URL
-
-	// Fill the database with public-domain demo books (screenshots, trying it out).
-	DemoData bool
 }
 
 func env(key, def string) string {
@@ -204,8 +201,6 @@ func Load() (*Config, error) {
 		CoreURL:             strings.TrimRight(env("CORE_URL", ""), "/"),
 		CoreRegistrationKey: env("CORE_REGISTRATION_KEY", ""),
 		CoreAppURL:          strings.TrimRight(env("CORE_APP_URL", ""), "/"),
-
-		DemoData: envBool("DEMO_DATA", false),
 	}
 	if c.CoreAppURL == "" {
 		c.CoreAppURL = c.BaseURL

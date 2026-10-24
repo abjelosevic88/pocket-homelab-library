@@ -13,8 +13,8 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
 	core "github.com/abjelosevic88/pocket-homelab-core/sdk"
+	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
 )
 
 // Router builds the chi router. Each area registers its own routes:

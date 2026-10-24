@@ -40,7 +40,7 @@ type StatusChange struct {
 }
 
 // SetStatus moves a book to a status. Finishing (read/dnf) records a read on
-// the day given ('' = today); starting stamps started_at.
+// the day given (” = today); starting stamps started_at.
 func (s *Store) SetStatus(ctx context.Context, uid, bookID int64, status, day string) (*UserBook, StatusChange, error) {
 	var ch StatusChange
 	ub, err := s.GetUserBook(ctx, uid, bookID)
@@ -387,6 +387,16 @@ func (s *Store) ReorderShelf(ctx context.Context, uid, shelfID int64, bookIDs []
 // ShelvesOfBook returns the ids of a person's shelves a book is on.
 func (s *Store) ShelvesOfBook(ctx context.Context, uid, bookID int64) ([]int64, error) {
 	ids, err := s.queryIDs(ctx, `SELECT sb.shelf_id FROM shelf_books sb JOIN shelves sh ON sh.id = sb.shelf_id WHERE sh.user_id = ? AND sb.book_id = ?`, uid, bookID)
+	if ids == nil {
+		ids = []int64{}
+	}
+	return ids, err
+}
+
+// ChangedUserBooks returns the books whose state a person changed since a
+// moment (” = all), newest first.
+func (s *Store) ChangedUserBooks(ctx context.Context, uid int64, since string, limit int) ([]int64, error) {
+	ids, err := s.queryIDs(ctx, `SELECT book_id FROM user_books WHERE user_id = ? AND updated_at >= ? ORDER BY updated_at DESC LIMIT ?`, uid, since, limit)
 	if ids == nil {
 		ids = []int64{}
 	}

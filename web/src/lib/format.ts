@@ -124,3 +124,14 @@ export function cap(s: string): string { return s ? s[0].toUpperCase() + s.slice
 export function gmaps(lat: number, lng: number): string { return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}` }
 export function appleMaps(lat: number, lng: number): string { return `https://maps.apple.com/?daddr=${lat},${lng}` }
 export function osmLink(lat: number, lng: number): string { return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}` }
+/** Reading time: "45 s", "12 min", "3 h 20 min". */
+export function fmtSeconds(sec: number): string {
+  if (!sec || sec < 0) return '0 min'
+  if (sec < 60) return `${Math.round(sec)} s`
+  const min = Math.round(sec / 60)
+  if (min < 60) return `${min} min`
+  const h = Math.floor(min / 60), m = min % 60
+  return m ? `${h} h ${m} min` : `${h} h`
+}
+/** 0..1 as a whole percentage. */
+export function fmtPct(v: number): string { return `${Math.round((v || 0) * 100)}%` }

@@ -15,9 +15,9 @@ import (
 
 	"golang.org/x/crypto/bcrypt"
 
+	core "github.com/abjelosevic88/pocket-homelab-core/sdk"
 	"github.com/abjelosevic88/pocket-homelab-library/internal/config"
 	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
-	core "github.com/abjelosevic88/pocket-homelab-core/sdk"
 )
 
 // Version is injected at build time.
@@ -43,10 +43,10 @@ type Server struct {
 	coreOK  bool
 	coreErr string
 
-	scan    *scanState    // libraries: scanning, uploads, ingest, metadata (scan.go)
-	devices *deviceState  // devices, Send to Kindle, conversions, imports (devices.go)
-	reader  *readerState  // the web reader: files, pages, progress, sessions (reader.go)
-	sync    *kosyncState  // KOReader sync, OPDS, the KOReader plugin, CrossPoint (kosync.go)
+	scan    *scanState   // libraries: scanning, uploads, ingest, metadata (scan.go)
+	devices *deviceState // devices, Send to Kindle, conversions, imports (devices.go)
+	reader  *readerState // the web reader: files, pages, progress, sessions (reader.go)
+	sync    *kosyncState // KOReader sync, OPDS, the KOReader plugin, CrossPoint (kosync.go)
 }
 
 // New creates a server.
@@ -260,7 +260,7 @@ func (s *Server) coreLoop(ctx context.Context) {
 }
 
 // eventTopics are what Library publishes on the Core bus.
-var eventTopics = []string{"library.book_added", "library.started", "library.finished", "library.highlighted", "library.sent"}
+var eventTopics = []string{"library.started", "library.finished", "library.highlighted", "library.sent"}
 
 func (s *Server) registerWithCore(ctx context.Context) error {
 	m := core.Manifest{

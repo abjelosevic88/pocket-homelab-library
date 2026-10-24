@@ -1,7 +1,7 @@
-# Pocket Library — audiobooks for the household on top of Audiobookshelf. Go + SQLite. One container, one volume.
+# Pocket Library — every ebook, comic and manga in one place. Go + SQLite. One container, one volume, your book folders.
 services:
   pocket-library:
-    image: ghcr.io/abjelosevic88/pocket-homelab-library:latest
+    image: ghcr.io/abjelosevic88/pocket-homelab-library:latest   # :latest-calibre adds conversions (MOBI → EPUB, …)
     container_name: pocket-library
     restart: unless-stopped
     ports:
@@ -10,22 +10,31 @@ services:
       TZ: ${TZ:-Europe/Berlin}
       BASE_URL: ${BASE_URL:-http://localhost:8080}
       # SECURE_COOKIES: "true"          # behind HTTPS
-      # Your Audiobookshelf. Everyone connects their own account on it (Settings → Audiobookshelf).
-      AUDIOBOOKSHELF_URL: ${AUDIOBOOKSHELF_URL:-http://audiobookshelf:80}
-      AUDIOBOOKSHELF_PUBLIC_URL: ${AUDIOBOOKSHELF_PUBLIC_URL:-}
       # First admin (only used while the database has no users):
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
-      # The admin's own Audiobookshelf account, copied once into their connection:
-      # an API key made for that account, or a username + password.
-      AUDIOBOOKSHELF_TOKEN: ${AUDIOBOOKSHELF_TOKEN:-}
-      AUDIOBOOKSHELF_USER: ${AUDIOBOOKSHELF_USER:-}
-      AUDIOBOOKSHELF_PASSWORD: ${AUDIOBOOKSHELF_PASSWORD:-}
+      # Libraries made on the first start: Name[@books|comics|manga]=/folder[|/another]; more under Library admin.
+      LIBRARIES: ${LIBRARIES:-Books=/books;Comics@comics=/comics;Manga@manga=/manga}
+      # A folder to drop books into; they are filed into the uploads library.
+      INGEST_DIR: ${INGEST_DIR:-/ingest}
+      # Mail for Send to Kindle (changeable under Settings → Mail).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_TLS: ${SMTP_TLS:-starttls}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-}
+      KINDLE_EMAIL: ${KINDLE_EMAIL:-}
       NOTIFY_URL: ${NOTIFY_URL:-}
-      # Pocket Core: one sign-in, Audiobookshelf logins per person.
+      # Pocket Core: one sign-in, links to Bookshelf and Day.
       # CORE_URL: http://pocket-core:8080
       # CORE_REGISTRATION_KEY: ${CORE_REGISTRATION_KEY}
     volumes:
       - ./data:/data
+      - ./books:/books          # writable if you upload or use the ingest folder
+      - ./comics:/comics
+      - ./manga:/manga
+      - ./ingest:/ingest
     extra_hosts:
       - "host.docker.internal:host-gateway"

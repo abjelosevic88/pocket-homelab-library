@@ -1,9 +1,10 @@
 import { Modal } from './ui'
 
 const GROUPS: { title: string; keys: [string[], string][] }[] = [
-  { title: 'Go to', keys: [[['h'], 'Home'], [['l'], 'Books'], [['s'], 'Series'], [['a'], 'Authors'], [['n'], 'Up next'], [['y'], 'History'], [['t'], 'Stats'], [[','], 'Settings']] },
+  { title: 'Go to', keys: [[['h'], 'Home'], [['l'], 'Books'], [['s'], 'Series'], [['a'], 'Authors'], [['r'], 'Reading'], [['b'], 'Shelves'], [['n'], 'Highlights'], [['t'], 'Stats'], [['d'], 'Devices'], [[','], 'Settings']] },
   { title: 'Find', keys: [[['/'], 'Search & commands'], [['⌘', 'K'], 'Search & commands'], [['['], 'Show or hide the sidebar'], [['?'], 'This sheet']] },
-  { title: 'Listening', keys: [[['space'], 'Play / pause'], [['k'], 'Play / pause'], [['←', '→'], 'Back / forward (Settings → Playback)'], [['⇧', '←'], 'Previous chapter'], [['⇧', '→'], 'Next chapter'], [['<', '>'], 'Slower / faster'], [['b'], 'Bookmark this moment'], [['p'], 'Open or close the player'], [['esc'], 'Close the player']] },
+  { title: 'Books', keys: [[['⇧', 'click'], 'Select several books'], [['esc'], 'Stop selecting'], [['⌘', 'A'], 'Select every book shown']] },
+  { title: 'Reading', keys: [[['←', '→'], 'Previous / next page'], [['space'], 'Next page'], [['t'], 'Contents'], [['b'], 'Bookmark this page'], [['f'], 'Full screen'], [['esc'], 'Close the panel, then the book']] },
 ]
 
 export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
@@ -19,7 +20,7 @@ export function ShortcutsSheet({ onClose }: { onClose: () => void }) {
           </section>
         ))}
       </div>
-      <p className="muted small mt">Media keys, headphone buttons and the lock screen work too (previous / next = chapters). In search, <kbd>⇧</kbd><kbd>↵</kbd> plays a book straight away.</p>
+      <p className="muted small mt">On a phone, press and hold a cover to start selecting. In search, <kbd>⇧</kbd><kbd>↵</kbd> opens a book in the reader straight away.</p>
     </Modal>
   )
 }

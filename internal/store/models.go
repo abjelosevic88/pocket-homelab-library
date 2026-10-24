@@ -57,12 +57,12 @@ type Author struct {
 
 // Series groups books in order.
 type Series struct {
-	ID          int64   `json:"id"`
-	Name        string  `json:"name"`
-	SortName    string  `json:"sort_name"`
-	Description string  `json:"description,omitempty"`
-	Books       int     `json:"books"`
-	Read        int     `json:"read"`   // the person's finished books in it
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	SortName    string   `json:"sort_name"`
+	Description string   `json:"description,omitempty"`
+	Books       int      `json:"books"`
+	Read        int      `json:"read"`   // the person's finished books in it
 	Covers      []string `json:"covers"` // up to 3 cover URLs of the first books
 }
 
