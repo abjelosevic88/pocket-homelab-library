@@ -650,9 +650,16 @@ func (q *BookQuery) where() (string, []any) {
 }
 
 func (q *BookQuery) orderBy() string {
-	desc := strings.EqualFold(q.Order, "desc")
+	// def is whether the sort runs newest/highest first when no order is asked for
 	dir := func(def bool) string {
-		if desc != def {
+		desc := def
+		switch strings.ToLower(q.Order) {
+		case "asc":
+			desc = false
+		case "desc":
+			desc = true
+		}
+		if desc {
 			return " DESC"
 		}
 		return ""

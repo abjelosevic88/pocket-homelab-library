@@ -134,3 +134,32 @@ func TestCatalogPerPerson(t *testing.T) {
 		t.Fatalf("bob's search finds %v", search.Books)
 	}
 }
+
+// Sorts that run newest first by default keep that direction when asked
+// for it explicitly (OPDS "Recently added" must be newest first).
+func TestBookSortOrder(t *testing.T) {
+	f := newDevFixture(t)
+	ctx := context.Background()
+	newer, err := f.st.CreateBook(ctx, 1, "/newer", store.BookMeta{Title: "Aaa newer"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.st.DB.ExecContext(ctx, `UPDATE books SET added_at = '2099-01-01T00:00:00Z' WHERE id = ?`, newer); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.st.UpsertFile(ctx, &store.File{BookID: newer, LibraryID: 1, Path: f.dir + "/books/newer.epub", Format: "epub"}); err != nil {
+		t.Fatal(err)
+	}
+	first := func(q string) int64 {
+		var page struct {
+			Items []store.Book `json:"items"`
+		}
+		f.json(f.anaTok, "GET", "/api/v1/books?"+q, nil, http.StatusOK, &page)
+		return page.Items[0].ID
+	}
+	for q, want := range map[string]int64{"sort=added": newer, "sort=added&order=desc": newer, "sort=added&order=asc": f.book, "sort=title": newer, "sort=title&order=desc": f.book} {
+		if got := first(q); got != want {
+			t.Errorf("%s: first = %d, want %d", q, got, want)
+		}
+	}
+}

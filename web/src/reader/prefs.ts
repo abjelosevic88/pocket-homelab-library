@@ -20,7 +20,8 @@ export interface ReaderPrefs {
 
 export const DEFAULT_PREFS: ReaderPrefs = {
   theme: 'app', font: 'publisher', size: 18, lineHeight: 1.5, margin: 6, maxWidth: 720, columns: 'auto',
-  justify: true, hyphenate: true, flow: 'paginated', publisherColors: true,
+  // a phone's narrow column justifies into wide gaps: ragged right there unless chosen
+  justify: typeof window === 'undefined' || window.innerWidth >= 600, hyphenate: true, flow: 'paginated', publisherColors: true,
 }
 
 export type ComicMode = 'single' | 'double' | 'scroll'

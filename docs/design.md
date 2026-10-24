@@ -55,5 +55,5 @@ With Pocket Core, Pocket Library joins the other apps: one sign-in, events on th
 
 - **Pocket Bookshelf** follows your reading here: a finished ebook becomes a read on your shelves, a book you are
   reading moves its page, highlights become quotes. Its rating and status show on the book page here.
-- **Pocket Day** can read a day of reading (`/day/<date>`) for the journal.
+- **Pocket Day** and other apps can read one day of reading in a sentence (`/api/v1/day/<date>`, scope `reading:read`).
 - **Pocket Hub** and Homepage show it with its icon; `/api/v1/dashboard` feeds a Homepage widget.

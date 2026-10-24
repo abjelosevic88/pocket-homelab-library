@@ -1,131 +1,113 @@
 <p align="center"><img src="web/public/favicon.svg" width="72" alt=""></p>
 <h1 align="center">Pocket Library</h1>
-<p align="center">Audiobooks for the whole household, on top of Audiobookshelf: a calm web player that keeps your place in step with the phone apps (continue on the phone, continue here), chapters, bookmarks, speed and a sleep timer, series and authors, Up next, and a listening history it keeps from every Audiobookshelf app, with stats, streaks and a daily goal.<br>One Go binary, one SQLite file, one volume.</p>
+<p align="center">Every ebook, comic and manga you own, in one place: a library that files and fixes your books, a reader for EPUB, MOBI, PDF, comics and manga in the browser, your place kept in step with KOReader and the Xteink X4, and a Send button for your Kindle and e-readers.<br>One Go binary, one SQLite file, your book folders.</p>
 <p align="center">
   <a href="https://github.com/abjelosevic88/pocket-homelab-library/actions"><img src="https://github.com/abjelosevic88/pocket-homelab-library/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
-  <a href="https://github.com/abjelosevic88/pocket-homelab-library/pkgs/container/pocket-homelab-library"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64%20%7C%20armv7-blue" alt="image"></a>
+  <a href="https://github.com/abjelosevic88/pocket-homelab-library/pkgs/container/pocket-homelab-library"><img src="https://img.shields.io/badge/ghcr.io-amd64%20%7C%20arm64-blue" alt="image"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
 </p>
 
 ---
 
-<p align="center"><img src="docs/screenshots/desktop-home.png" width="900" alt="Home: pick up where you left off, continue listening, up next"></p>
+<p align="center"><img src="docs/screenshots/desktop-home.png" width="900" alt="Home: pick up where you left off, reading goals, continue reading and want to read"></p>
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/screenshots/desktop-book.png" alt="A book with chapters, bookmarks and your listening"></td>
-    <td width="50%"><img src="docs/screenshots/desktop-player.png" alt="The player"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-book.png" alt="A book with status, rating, Send, Download, shelves, highlights and reading time"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-reader.png" alt="The reader"></td>
   </tr>
   <tr>
-    <td align="center"><sub>A book: your place, chapters to jump to, bookmarks, the rest of its series, how long you've listened.</sub></td>
-    <td align="center"><sub>The player: chapters, speed, sleep timer (minutes or the end of the chapter), bookmarks; your place goes back to Audiobookshelf every 15 s.</sub></td>
+    <td align="center"><sub>Every book: your status and rating, Send to a device, every format to download, highlights and time read.</sub></td>
+    <td align="center"><sub>A calm reader for EPUB, MOBI, AZW3 and FB2, with chapters, search, highlights and notes.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/desktop-library.png" alt="The library"></td>
-    <td width="50%"><img src="docs/screenshots/desktop-series.png" alt="Series"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-library.png" alt="The library grid"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-devices.png" alt="Devices: Kindle, Xteink X4, KOReader"></td>
   </tr>
   <tr>
-    <td align="center"><sub>The library: in progress, not started, finished; by title, author, length, last listened.</sub></td>
-    <td align="center"><sub>Series, with how far you are in each.</sub></td>
+    <td align="center"><sub>Filters, sorting, multi-select and bulk edits over thousands of books.</sub></td>
+    <td align="center"><sub>Your Kindle, Xteink X4 and KOReader devices, and what was sent where.</sub></td>
   </tr>
   <tr>
-    <td width="50%"><img src="docs/screenshots/desktop-stats.png" alt="Listening stats"></td>
-    <td width="50%"><img src="docs/screenshots/desktop-history.png" alt="History by day"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-stats.png" alt="Reading stats"></td>
+    <td width="50%"><img src="docs/screenshots/desktop-book-dark.png" alt="Dark mode"></td>
   </tr>
   <tr>
-    <td align="center"><sub>Stats from your history — here and in every Audiobookshelf app: time, finished books, streaks.</sub></td>
-    <td align="center"><sub>History, every listening session by day, with the device it played on.</sub></td>
+    <td align="center"><sub>Time read on every device, pages, streaks and finished books.</sub></td>
+    <td align="center"><sub>Dark mode.</sub></td>
   </tr>
 </table>
 
 <p align="center">
   <img src="docs/screenshots/phone-home.png" width="240" alt="Home on a phone">&nbsp;&nbsp;
-  <img src="docs/screenshots/phone-book.png" width="240" alt="A book on a phone">&nbsp;&nbsp;
-  <img src="docs/screenshots/desktop-book-dark.png" width="420" alt="A book in dark mode">
+  <img src="docs/screenshots/phone-reader.png" width="240" alt="Reading on a phone">&nbsp;&nbsp;
+  <img src="docs/screenshots/phone-book-dark.png" width="240" alt="A book on a phone, dark">
 </p>
-
-## Upload audiobooks
-
-Open **Library → Upload**, choose a book library and folder, then select the files for one book. Add its title
-and optional author/series, and press **Upload book**. Multiple audio tracks, covers and companion ebooks can
-be uploaded together. The dialog shows transfer progress; after scanning, use **Refresh** to see the new book.
-Your Audiobookshelf account needs upload permission. The default limit is 10 GiB per upload, configurable with
-`MAX_AUDIOBOOK_UPLOAD_BYTES`. Files with matching names in the same destination book folder are replaced.
-
-## Use it from Audiobookshelf apps
-
-The Audiobookshelf app, AudioBooth, Plappa, ShelfPlayer and other Audiobookshelf players can sign in to Pocket
-Audiobooks as if it were Audiobookshelf: server address = this app's address (or `…/audiobookshelf`), username = your
-email, password = an **app password** from **Settings → Apps & API → Audiobookshelf apps**. Everything goes on to
-Audiobookshelf as your own account — your place, bookmarks and downloads work as before, the listening lands in your
-history here, and your Audiobookshelf key never reaches the phone. Details in [docs/api.md](docs/api.md).
-
-## Connect Pocket Homelab
-
-Use this app's base URL in Pocket Homelab's **Audiobookshelf** settings and a personal token from
-**Settings → API & shortcuts**. The existing native player can browse, play, download, bookmark and save progress
-through Pocket Library. Audiobookshelf continues to store the library and listening position underneath.
-
-With Pocket Core, select **Pocket Library** under **Devices → Apps on your devices → Audiobooks** and refresh
-the app's Core configuration. Core supplies the gateway URL and the device's own token using the settings the
-existing app already understands; no phone app rebuild is required.
-
-
-## Why on top of Audiobookshelf
-
-Audiobookshelf already does the server part very well — scanning folders into books, chapters, Audible and Google
-metadata and covers, transcoding, and the API the phone apps speak (offline downloads, CarPlay). Pocket Library
-doesn't replace any of that: it plays your library *through* Audiobookshelf, with each person's own account, and
-adds what the listening around the books needs — a player that keeps your place in step with the phone, a history
-you own, Up next, stats and streaks, and a place among the other Pocket apps. Keep the phone apps: your place,
-finished books and bookmarks are shared. More in [docs/design.md](docs/design.md).
 
 ## What it does
 
-**Listening**
-- Home: pick up where you left off, everything in progress, Up next, the next book of series you started, recently
-  added, books you haven't started, listen again.
-- A player that stays at the bottom while you browse: the files as they are when the browser can play them (books
-  in one file or in fifty), HLS through Audiobookshelf when it can't. Chapters, speed per book, skip back/forward,
-  a few seconds back after a long pause, a sleep timer, bookmarks, lock-screen and headphone controls, keyboard
-  shortcuts. When a book ends, the next one from Up next or its series.
-- Your place goes back to Audiobookshelf every 15 seconds and on pause, as a real playback session: the phone picks
-  up where the web stopped. When the phone plays, the web shows it — **Continue here** takes over at that moment.
-- Library by library: books (filters, sorting, genres, narrators), series, authors, search across everything (⌘K).
+**Your folders, kept tidy**
+- Point it at your book folders: books, comics and manga libraries, each open to everyone or to chosen people.
+  The EPUB, MOBI and PDF of one book become one book with three formats; Calibre's sidecar `.opf` files and
+  one-folder-per-book layouts are read as they are. Ten thousand books scan in a couple of minutes, and rescans
+  only open what changed.
+- Edit everything (title, authors, series, tags, language, identifiers, cover) one book at a time or in bulk;
+  edited fields are locked so a rescan never undoes them. Fetch details and covers from Open Library and Google
+  Books, field by field, or fill in what is missing across the whole library.
+- Upload in the browser or drop files into an ingest folder: they are filed as `Author/Author - Title.ext`.
+  Duplicates found by file, ISBN and title; author pages with photos and biographies.
+
+**Read anywhere**
+- A reader in the browser for EPUB, KEPUB, MOBI, AZW3, FB2, PDF, CBZ, CBR and CB7: pages or scrolling, fonts,
+  sizes, margins, sepia and dark themes, contents, search, footnotes, bookmarks, highlights in five colours with
+  notes, dictionary look-ups. Comics single or two pages at a time, manga right to left, webtoons as one strip.
+- Your place follows you: the web reader, KOReader and the **Xteink X4 with CrossPoint** all sync to the
+  built-in KOReader sync server, matched to the exact file even when the device's copy has another name, and a
+  device opening a book you read further elsewhere jumps to that page.
+- An **OPDS catalogue** for KOReader, CrossPoint and any OPDS app: continue reading, want to read, recently
+  added, your shelves, authors, series, search, and what you sent to that device.
+- A **KOReader plugin** (also for a jailbroken Kindle): downloads books you sent, uploads highlights and reading
+  time, and sets up sync and the catalogue in one tap.
+
+**Send it**
+- **Send to Kindle** by e-mail with Amazon's EPUB fixes and your edited metadata written in; MOBI and AZW3
+  converted to EPUB first (calibre). Also to any e-mail device, straight to an X4 on your network, or into a
+  device's catalogue to fetch later. Downloads in any format, converted on the way (EPUB, KEPUB, AZW3, …).
 
 **Yours**
-- A listening history Pocket Library keeps: every session in every Audiobookshelf app, copied every few minutes,
-  back to the first one. Stats: time listened, finished books, top books, authors, narrators, genres, devices,
-  weekdays and hours, streaks and an optional daily goal. A push when you finish a book, a weekly recap.
-- Mark finished or not, start over, take a book off Continue listening — written to Audiobookshelf.
+- Want to read, reading, read (with dates, re-reads count), didn't finish; half-star ratings; favourites.
+- Shelves: hand-picked, ordered reading lists, and smart shelves that fill themselves from a filter.
+- Highlights from every device in one place, searchable, exported as Markdown.
+- Stats: time read per day and device, pages, streaks, daily and yearly goals, books finished.
+- Everything you do is yours alone; admins manage the library, not your reading.
 
-**The Pocket apps**
-- With [Pocket Core](https://github.com/abjelosevic88/pocket-homelab-core): one sign-in, each person's
-  Audiobookshelf login from Core, Pocket Day and Pocket Bookshelf can read what you listened to
-  (`listening:read`), and an `audiobooks.finished` event.
-- Strictly per person: history, Up next and settings are yours; admins don't see anyone else's listening.
+**Moving in**
+- Import from Calibre-Web (Kindle addresses, the mail account, shelves, read status) and Kavita (progress,
+  ratings, collections, reading lists), and your Kindle's `My Clippings.txt`.
+
+**With the other Pocket apps**
+- Sign in with Pocket Core; Pocket Bookshelf turns what you finish here into reads, the page you are on into
+  progress and your highlights into quotes; your rating there shows here; events (started, finished, highlighted, sent) for anything else.
 
 ## Run it
 
 ```sh
-docker run -d --name pocket-library -p 8080:8080 -v ./data:/data \
-  -e BASE_URL=https://audio.example.com -e SECURE_COOKIES=true \
-  -e AUDIOBOOKSHELF_URL=http://audiobookshelf:80 \
-  ghcr.io/abjelosevic88/pocket-homelab-library:latest
+docker run -d --name pocket-library -p 8080:8080 -v ./data:/data -v /path/to/books:/books \
+  -e BASE_URL=https://library.example.com -e SECURE_COOKIES=true -e LIBRARIES="Books=/books" \
+  ghcr.io/abjelosevic88/pocket-homelab-library:latest        # :latest-calibre adds conversions
 ```
 
-Open it, create the first account, then connect Audiobookshelf under Settings → Audiobookshelf: an API key made for
-your account (Audiobookshelf → Settings → API Keys), or your password. See
-[docs/configuration.md](docs/configuration.md) for every option, [docs/api.md](docs/api.md) for the API (and a
-Homepage widget), [docs/reverse-proxy.md](docs/reverse-proxy.md) and [docs/backup.md](docs/backup.md).
+Open it, create the first account, and add your e-readers under Devices; each shows what to type in. See
+[docs/configuration.md](docs/configuration.md) for every option, [docs/api.md](docs/api.md) for the API and the
+e-reader endpoints, [docs/design.md](docs/design.md) for how it works, [docs/backup.md](docs/backup.md) and
+[docs/reverse-proxy.md](docs/reverse-proxy.md).
 
-Try it with a demo library: [scripts/demo-library/make.sh](scripts/demo-library/make.sh) runs a throwaway
-Audiobookshelf with 22 public-domain classics at their real lengths (generated silent audio with chapters; covers
-and descriptions matched on Audible by Audiobookshelf) and six weeks of a demo listener's history. The screenshots
-above are that library; [scripts/screenshots.mjs](scripts/screenshots.mjs) is also the browser test.
+Try it with public-domain books: `scripts/demo/make.sh`, then
+`make web build && DATA_DIR=/tmp/pl AUTH_MODE=none LIBRARIES="Books=$HOME/.cache/pocket-library-demo/books" ./pocket-library`.
 
 ## Built with
 
-Go, chi, SQLite (modernc), React 19, Vite, hls.js. Works with Audiobookshelf 2.26+ (API keys; earlier versions with a
-password); works alone, and with [Pocket Core](https://github.com/abjelosevic88/pocket-homelab-core) for single
-sign-on, paired phones and the links between apps. MIT licensed.
+Go, chi, SQLite (modernc, FTS5), React 19, Vite, [foliate-js](https://github.com/johnfactotum/foliate-js) and
+pdf.js for reading, kepubify, calibre for conversions. Part of the Pocket apps; works alone, and with
+[Pocket Core](https://github.com/abjelosevic88/pocket-homelab-core) for single sign-on, paired phones and the links
+between apps. MIT licensed.
