@@ -120,6 +120,7 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
           <NavLink to="/highlights" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="note" size={16} />Highlights</NavLink>
           <NavLink to="/stats" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="bar" size={16} />Stats</NavLink>
           <NavLink to="/devices" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="smartphone" size={16} />Devices</NavLink>
+          <NavLink to="/translate" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="languages" size={16} />Translate</NavLink>
         </nav>
       </Group>
 

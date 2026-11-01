@@ -47,6 +47,8 @@ type Server struct {
 	devices *deviceState // devices, Send to Kindle, conversions, imports (devices.go)
 	reader  *readerState // the web reader: files, pages, progress, sessions (reader.go)
 	sync    *kosyncState // KOReader sync, OPDS, the KOReader plugin, CrossPoint (kosync.go)
+
+	translate *translateState // translations into Serbian with Pocket AI (translate.go)
 }
 
 // New creates a server.
@@ -58,6 +60,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) *Se
 	s.devices = newDeviceState()
 	s.reader = newReaderState()
 	s.sync = newKosyncState()
+	s.translate = newTranslateState()
 	return s
 }
 
@@ -109,6 +112,7 @@ func (s *Server) Bootstrap(ctx context.Context) error {
 	s.startDevices(ctx)
 	s.startReader(ctx)
 	s.startKosync(ctx)
+	s.startTranslate(ctx)
 	if s.core.Configured() {
 		go s.coreLoop(ctx)
 	}

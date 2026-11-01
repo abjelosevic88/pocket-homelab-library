@@ -18,7 +18,7 @@ import (
 // listed in linkRoutes stays closed to it (403).
 //
 // As the actor: Library reads the person's Pocket Bookshelf (their rating and
-// status of a book, shown on the book page).
+// status of a book, shown on the book page) and has Pocket AI translate books.
 
 var linkOffers = []core.Offer{
 	{Scope: "reading:read", Name: "See what you read", Description: "Read what you read in your library (where you are in each book, books you finished, reading time per day, highlights and notes), for your reading log, journal and dashboards."},
@@ -27,6 +27,7 @@ var linkOffers = []core.Offer{
 
 var linkUses = []core.Use{
 	{App: "bookshelf", Scopes: []string{"books:read"}, Reason: "Show your rating and reading status from Pocket Bookshelf on each book's page"},
+	core.InferenceUse(), // Translate: books into Serbian with your Pocket AI
 }
 
 type linkRoute struct {

@@ -25,6 +25,7 @@ import Reading from './pages/Reading'
 import Highlights from './pages/Highlights'
 import Stats from './pages/Stats'
 import Devices from './pages/Devices'
+import Translate from './pages/Translate'
 import Admin from './pages/Admin'
 import Settings from './pages/Settings'
 
@@ -67,6 +68,7 @@ function App() {
           <Route path="/highlights" element={<Highlights />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/devices" element={<Devices />} />
+          <Route path="/translate" element={<Translate />} />
           <Route path="/admin/:tab?" element={<Admin />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

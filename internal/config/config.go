@@ -31,6 +31,9 @@ type Config struct {
 	MaxUploadBytes     int64 // JSON imports
 	MaxBookUploadBytes int64 // book uploads, all files of one request together
 
+	TranslateChunk    int // bytes of markup per Pocket AI request
+	TranslateParallel int // Pocket AI requests at once per translation
+
 	AuthMode             string // local | proxy | none
 	AuthProxyHeader      string
 	AuthProxyEmailHeader string
@@ -158,6 +161,9 @@ func Load() (*Config, error) {
 
 		MaxUploadBytes:     envInt64("MAX_UPLOAD_BYTES", 50<<20),
 		MaxBookUploadBytes: envInt64("MAX_BOOK_UPLOAD_BYTES", 2<<30),
+
+		TranslateChunk:    envInt("TRANSLATE_CHUNK", 6000),
+		TranslateParallel: envInt("TRANSLATE_PARALLEL", 3),
 
 		AuthMode:             strings.ToLower(env("AUTH_MODE", "local")),
 		AuthProxyHeader:      env("AUTH_PROXY_HEADER", "Remote-User"),

@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, V1 } from '../lib/api'
 import { useApp } from '../lib/app-context'
 import { useApi } from '../lib/use'
-import type { Annotation, BookDetail, ReadStatus, ReadingSession, UserBook } from '../lib/types'
+import type { Annotation, BookDetail, ReadStatus, ReadingSession, Translation, UserBook } from '../lib/types'
 import { READABLE, formatLabel, hm, identifierLink, pct, readingTime, seriesIndex, stateOf, todayISO } from '../lib/books'
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format'
 import { Icon } from '../components/icons'
@@ -13,10 +13,27 @@ import { BookCard, Cover, Progress, Rail, Stars } from '../components/cards'
 import { useCrumb } from '../components/Layout'
 import { type Anchor, Confirm, Loading, MenuButton, type MenuItem, Modal, Popover, download, errMsg, rectOf, useToast } from '../components/ui'
 import { SendButton } from '../components/SendButton'
+import { TranslateBookDialog } from '../components/TranslateOptions'
 import { ShelfPicker } from '../components/ShelfPicker'
 import { EditBookModal } from '../components/EditBookModal'
 import { sidebarChanged } from '../components/Sidebar'
 import { langName } from '../components/FilterBar'
+
+const TRANSLATABLE = new Set(['epub', 'kepub', 'mobi', 'azw', 'azw3', 'prc', 'fb2', 'fbz', 'docx', 'rtf', 'txt', 'pdf'])
+
+/** "Serbian translation" links (or progress) under the actions. */
+function BookTranslations({ b, list }: { b: BookDetail; list: Translation[] }) {
+  const from = list.filter(t => t.source_book_id === b.id && t.status !== 'cancelled')
+  const of = list.find(t => t.result_book_id === b.id)
+  return (
+    <div className="book-translations muted">
+      {of && <span><Icon name="languages" size={13} /> Translated with Pocket AI{of.source_book_id ? <> from <Link to={`/book/${of.source_book_id}`}>{of.title || of.source_name}</Link></> : ` from ${of.source_name}`}</span>}
+      {from.slice(0, 3).map(t => t.status === 'done' && t.result_book_id
+        ? <Link key={t.id} to={`/book/${t.result_book_id}`}><Icon name="languages" size={13} />Serbian edition{t.title_translated ? `: ${t.title_translated}` : ''} ({t.script === 'cyrillic' ? 'ćirilica' : 'latinica'})</Link>
+        : <Link key={t.id} to="/translate"><Icon name="languages" size={13} />{t.status === 'running' ? `Translating to Serbian${t.batches ? ` · ${Math.round(t.done_batches / t.batches * 100)}%` : '…'}` : t.status === 'queued' ? 'Waiting to be translated' : t.status === 'failed' ? 'Translation failed — see Translate' : 'Translation'}</Link>)}
+    </div>
+  )
+}
 
 const PILLS: { s: ReadStatus; label: string; icon: string }[] = [
   { s: 'want', label: 'Want to read', icon: 'bookmark-plus' },
@@ -35,7 +52,22 @@ export default function BookPage() {
   const [editing, setEditing] = useState(false)
   const [finishAt, setFinishAt] = useState<Anchor | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [translating, setTranslating] = useState(false)
+  const [translations, setTranslations] = useState<Translation[]>([])
   useCrumb(data?.title)
+  // translations made from (or into) this book; followed while one runs
+  useEffect(() => {
+    let t = 0
+    let live = true
+    const load = () => api.get<Translation[]>(`${V1}/translations?book=${encodeURIComponent(id)}`).then(list => {
+      if (!live) return
+      setTranslations(list)
+      if (list.some(x => x.status === 'running' || x.status === 'queued')) t = window.setTimeout(load, 8000)
+    }).catch(() => {})
+    load()
+    window.addEventListener('plb:translations', load)
+    return () => { live = false; clearTimeout(t); window.removeEventListener('plb:translations', load) }
+  }, [id])
   if (error) return <div className="callout danger"><Icon name="alert" size={15} />{error}</div>
   if (!data) return <Loading />
   const b = data
@@ -77,6 +109,7 @@ export default function BookPage() {
     { label: 'Highlights & notes', icon: 'note', onSelect: () => navigate(`/highlights?book=${b.id}`) },
     ...(editor ? ['sep' as const,
       { label: 'Edit details', icon: 'edit', onSelect: () => setEditing(true) },
+      ...(files.some(f => TRANSLATABLE.has(f.format)) ? [{ label: 'Translate to Serbian…', icon: 'languages', onSelect: () => setTranslating(true) }] : []),
       { label: 'Read the files again', icon: 'refresh', onSelect: async () => { try { await api.post(`${V1}/books/${b.id}/rescan`); await reload(); toast('Read again from its files') } catch (e) { toast(errMsg(e), 'err') } } },
       { label: 'Delete book and files…', icon: 'trash', danger: true, onSelect: () => setDeleting(true) }] : []),
   ]
@@ -126,6 +159,7 @@ export default function BookPage() {
             <ShelfPicker bookIds={[b.id]} on={b.shelves} onChange={ids => setData({ ...b, shelves: ids })} />
             <MenuButton label="More" className="btn ghost icon-only lg" items={menu} align="right"><Icon name="more" size={18} /></MenuButton>
           </div>
+          {translations.length > 0 && <BookTranslations b={b} list={translations} />}
           {b.missing && <div className="callout warn small"><Icon name="alert" size={14} />Its files are gone from the library folder. Your progress and highlights stay.</div>}
           {b.tags.length > 0 && <p className="book-genres">{b.tags.slice(0, 14).map(t => <Link key={t} className="chip" to={`/library?tag=${encodeURIComponent(t)}`}>{t}</Link>)}</p>}
         </div>
@@ -189,6 +223,7 @@ export default function BookPage() {
 
       {finishAt && <FinishPopover anchor={finishAt} onClose={() => setFinishAt(null)} onDone={day => { setFinishAt(null); setState({ status: 'read', day }, 'Marked as read') }} />}
       {editing && <EditBookModal book={b} onClose={() => setEditing(false)} onSaved={nb => { setEditing(false); setData(nb); reload() }} />}
+      {translating && <TranslateBookDialog book={b} onClose={() => setTranslating(false)} onStarted={() => window.dispatchEvent(new CustomEvent('plb:translations'))} />}
       {deleting && <DeleteBook b={b} onClose={() => setDeleting(false)} onDeleted={() => { setDeleting(false); toast('Deleted'); navigate('/library') }} />}
     </div>
   )

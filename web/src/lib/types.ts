@@ -211,3 +211,16 @@ export interface MetadataCandidate {
 }
 
 export interface DuplicateGroup { reason: 'same file' | 'same isbn' | 'same title'; books: Book[] }
+
+export type TranslationStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled'
+export interface Translation {
+  id: number; source_book_id: number; source_name: string; source_size: number
+  title: string; author: string; title_translated: string
+  script: 'latin' | 'cyrillic'; model: string; notes: string
+  status: TranslationStatus; step: string
+  units: number; chars: number; batches: number; done_batches: number; cached_batches: number
+  warnings: string[]; error: string; result_book_id: number
+  created_at: string; started_at: string; finished_at: string
+}
+export interface TranslateStatus { ready: boolean; detail: string; core: boolean; convert: boolean; parallel: number }
+export interface AIModels { models: { id: string; name: string; description?: string }[]; default_model: string; default_name: string }

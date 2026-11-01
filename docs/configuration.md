@@ -40,6 +40,8 @@ Integration values seed the owner's (first admin's) own settings on first start,
 | `COVERS_DIR` | `$DATA_DIR/covers` | Covers and author photos (thumbnails are made on demand in `thumbs/`) |
 | `CACHE_DIR` | `$DATA_DIR/cache` | Converted files, EPUBs with embedded metadata, extracted comic pages; safe to delete |
 | `MAX_BOOK_UPLOAD_BYTES` | `2147483648` | Largest upload (all files of one request) |
+| `TRANSLATE_CHUNK` | `6000` | Translate: bytes of book markup per Pocket AI request (each must finish within Pocket AI's ~140 s) |
+| `TRANSLATE_PARALLEL` | `3` | Translate: Pocket AI requests at once (Pocket AI serves 4 app requests at a time in total) |
 | `MAX_UPLOAD_BYTES` | `52428800` | Largest JSON import |
 | `EBOOK_CONVERT` | looked up on `PATH` | Calibre's `ebook-convert` for conversions (MOBI/AZW3/FB2 → EPUB for Send to Kindle and CrossPoint, EPUB → AZW3, …). The `-calibre` image has it; `off` switches conversions off. EPUB → KEPUB never needs calibre. |
 
