@@ -3,7 +3,7 @@ import { type ReactNode, useEffect, useState } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { api, V1 } from '../lib/api'
 import { useApp } from '../lib/app-context'
-import type { Book, Library, Page, ScanStatus, Shelf } from '../lib/types'
+import type { Book, Library, Page, ScanStatus, Shelf, Translation } from '../lib/types'
 import { pct } from '../lib/books'
 import { Icon } from './icons'
 import { Cover } from './cards'
@@ -60,6 +60,26 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
     window.addEventListener('plb:scan', kick)
     return () => { live = false; clearTimeout(t); window.removeEventListener('plb:scan', kick) }
   }, [])
+
+  // a translation running: a spinner and its percent on the Translate item
+  const [tr, setTr] = useState<{ running: Translation | null; queued: number } | null>(null)
+  useEffect(() => {
+    let t = 0
+    let live = true
+    const poll = () => {
+      api.get<{ running: Translation | null; queued: number }>(`${V1}/translate/active`).then(r => {
+        if (!live) return
+        setTr(r)
+        t = window.setTimeout(poll, r.running || r.queued ? 5000 : 60000)
+      }).catch(() => { if (live) t = window.setTimeout(poll, 120000) })
+    }
+    poll()
+    const kick = () => { clearTimeout(t); poll() }
+    window.addEventListener('plb:translations', kick)
+    return () => { live = false; clearTimeout(t); window.removeEventListener('plb:translations', kick) }
+  }, [])
+  const trRun = tr?.running
+  const trPct = trRun && trRun.batches && trRun.step === 'translate' ? Math.round(trRun.done_batches / trRun.batches * 100) : null
 
   const [shelvesOpen, setShelvesOpen] = useState(() => localStorage.getItem('plb-sb-shelves') !== '0')
   const toggleShelves = () => setShelvesOpen(o => { localStorage.setItem('plb-sb-shelves', o ? '0' : '1'); return !o })
@@ -120,7 +140,10 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
           <NavLink to="/highlights" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="note" size={16} />Highlights</NavLink>
           <NavLink to="/stats" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="bar" size={16} />Stats</NavLink>
           <NavLink to="/devices" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="smartphone" size={16} />Devices</NavLink>
-          <NavLink to="/translate" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><Icon name="languages" size={16} />Translate</NavLink>
+          <NavLink to="/translate" onClick={onNavigate} className={({ isActive }) => `sb-nav-item ${isActive ? 'active' : ''}`}><span className={trRun ? 'sb-tr-ico busy' : 'sb-tr-ico'}><Icon name="languages" size={16} /></span>Translate
+            {trRun ? <span className="sb-count sb-tr" title={`Translating ${trRun.title || trRun.source_name}`}><span className="spinner" />{trPct !== null ? `${trPct}%` : ''}</span>
+              : tr?.queued ? <span className="sb-count" title="Waiting to be translated">{tr.queued}</span> : null}
+          </NavLink>
         </nav>
       </Group>
 

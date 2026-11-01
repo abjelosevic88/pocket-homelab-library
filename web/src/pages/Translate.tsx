@@ -45,7 +45,7 @@ export default function Translate() {
   const active = !!jobs?.some(j => j.status === 'queued' || j.status === 'running')
   useEffect(() => {
     if (!active) return
-    const t = window.setInterval(() => { api.get<Translation[]>(`${V1}/translations`).then(setData).catch(() => {}) }, 4000)
+    const t = window.setInterval(() => { api.get<Translation[]>(`${V1}/translations`).then(setData).catch(() => {}) }, 2500)
     return () => clearInterval(t)
   }, [active, setData])
 
@@ -67,7 +67,7 @@ export default function Translate() {
       let j: { error?: string } = {}
       try { j = JSON.parse(req.responseText) } catch { /* not JSON */ }
       if (req.status >= 200 && req.status < 300) {
-        setFile(null); setChoice(c => ({ ...c, notes: '' })); reload()
+        setFile(null); setChoice(c => ({ ...c, notes: '' })); reload(); window.dispatchEvent(new CustomEvent('plb:translations'))
         toast('Translation started — you can leave this page, it carries on')
       } else toast(req.status === 413 ? 'Too big for this server.' : j.error || `Upload failed (${req.status})`, 'err')
     }
@@ -128,17 +128,63 @@ export default function Translate() {
   )
 }
 
+function clock(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000))
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60
+  return h ? `${h}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}` : `${m}:${String(r).padStart(2, '0')}`
+}
+
+/** Re-render every second while on. */
+function useNow(on: boolean) {
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!on) return
+    const t = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [on])
+  return now
+}
+
+/** The running job: percent, a bar with the parts at Pocket AI pulsing ahead of the done ones, a live clock. */
+function LiveProgress({ j }: { j: Translation }) {
+  const now = useNow(true)
+  const total = j.batches
+  const done = total ? j.done_batches / total : 0
+  const flying = total ? Math.min(j.active, total - j.done_batches) / total : 0
+  const pctDone = Math.round(done * 100)
+  const spent = j.started_at ? now - new Date(j.started_at).getTime() : 0
+  let eta = ''
+  const fresh = j.done_batches - j.cached_batches
+  if (j.step === 'translate' && fresh > 0) eta = `about ${mins((spent / fresh) * (total - j.done_batches))} left`
+  else if (j.step === 'translate' && total) eta = 'working out how long…'
+  const indeterminate = !total || j.step !== 'translate'
+  return (
+    <div className="tr-live">
+      <div className="tr-live-head">
+        <span className="tr-pct tnum">{indeterminate && j.step !== 'assemble' && j.step !== 'deliver' ? <span className="spinner" /> : `${j.step === 'translate' ? pctDone : 100}%`}</span>
+        <span className="grow">
+          <b>{STEP[j.step] || 'Starting'}</b>
+          {total > 0 && j.step === 'translate' && <span className="muted"> · {j.done_batches} of {total} parts done{j.cached_batches ? ` (${j.cached_batches} kept from before)` : ''}</span>}
+        </span>
+        <span className="muted small tnum" title="Time since it started"><Icon name="clock" size={13} /> {clock(spent)}</span>
+      </div>
+      <div className={`tr-bar ${indeterminate ? 'indeterminate' : ''}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={indeterminate ? undefined : pctDone}>
+        {!indeterminate && <><span className="done" style={{ width: `${done * 100}%` }} /><span className="flying" style={{ width: `${flying * 100}%` }} /></>}
+      </div>
+      <div className="small muted row" style={{ gap: 8 }}>
+        {j.active > 0 && <span className="tr-dots" aria-hidden="true"><i /><i /><i /></span>}
+        <span className="grow">{j.active > 0 ? `${j.active} ${j.active === 1 ? 'part is' : 'parts are'} being translated by Pocket AI right now` : j.step === 'translate' ? 'Waiting for Pocket AI…' : ''}</span>
+        {eta && <span className="tnum">{eta}</span>}
+      </div>
+    </div>
+  )
+}
+
 function JobCard({ j, onLog, onCancel, onRetry, onDelete }: { j: Translation; onLog: () => void; onCancel: () => void; onRetry: () => void; onDelete: () => void }) {
   const [cls, label] = STATUS[j.status]
   const [showWarn, setShowWarn] = useState(false)
   const frac = j.batches ? j.done_batches / j.batches : 0
   const running = j.status === 'running'
-  let eta = ''
-  if (running && j.step === 'translate' && j.started_at && j.done_batches > j.cached_batches) {
-    const spent = Date.now() - new Date(j.started_at).getTime()
-    const fresh = j.done_batches - j.cached_batches
-    eta = ` · about ${mins((spent / fresh) * (j.batches - j.done_batches))} left`
-  }
   const took = j.started_at && j.finished_at ? mins(new Date(j.finished_at).getTime() - new Date(j.started_at).getTime()) : ''
   return (
     <section className="card tr-job">
@@ -148,16 +194,15 @@ function JobCard({ j, onLog, onCancel, onRetry, onDelete }: { j: Translation; on
             <b className="tr-title">{j.title || j.source_name}</b>{j.author && <span className="muted"> — {j.author}</span>}
             {j.title_translated && j.title_translated !== j.title && <div className="small"><Icon name="arrow-right" size={12} /> {j.title_translated}</div>}
           </div>
-          <span className={`pill ${cls}`}>{label}</span>
+          <span className={`pill ${cls}`}>{running && <span className="spinner" style={{ width: 10, height: 10 }} />}{label}</span>
         </div>
-        {(running || j.status === 'done' || j.batches > 0) && <Progress value={j.status === 'done' ? 1 : frac} />}
-        <div className="small muted">
-          {running ? <>{STEP[j.step] || 'Working'}{j.batches ? ` · ${j.done_batches} of ${j.batches} parts` : ''}{j.cached_batches ? ` (${j.cached_batches} kept from before)` : ''}{eta}</>
-            : j.status === 'queued' ? 'Waiting for the translation before it'
+        {running ? <LiveProgress j={j} /> : (j.status === 'done' || frac > 0) && <Progress value={j.status === 'done' ? 1 : frac} />}
+        {!running && <div className="small muted">
+          {j.status === 'queued' ? 'Waiting for the translation before it'
             : j.status === 'done' ? <>Done {fmtDateTime(j.finished_at)}{took ? ` · took ${took}` : ''}</>
             : j.status === 'failed' ? <span className="danger-text">{j.error}</span>
             : j.batches ? `Stopped at ${j.done_batches} of ${j.batches} parts` : 'Stopped'}
-        </div>
+        </div>}
         <div className="xsmall muted">
           {j.source_book_id ? <Link to={`/book/${j.source_book_id}`}>{j.source_name}</Link> : j.source_name}
           {j.source_size ? ` · ${fmtBytes(j.source_size)}` : ''} · {j.script === 'cyrillic' ? 'ćirilica' : 'latinica'}{j.model ? ` · ${j.model}` : ''}

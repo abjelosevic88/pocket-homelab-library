@@ -36,6 +36,7 @@ type translateState struct {
 	wake    chan struct{}
 	mu      sync.Mutex
 	running int64
+	active  int // parts of the running job at Pocket AI right now
 	cancel  context.CancelCauseFunc
 }
 
@@ -50,6 +51,7 @@ var translateFrom = map[string]bool{"epub": true, "kepub": true, "mobi": true, "
 func (s *Server) routesTranslate(api chi.Router) {
 	api.Get("/translate/status", s.handleTranslateStatus)
 	api.Get("/translate/models", s.handleTranslateModels)
+	api.Get("/translate/active", s.handleTranslateActive)
 	api.Get("/translations", s.handleListTranslations)
 	api.Post("/translations", s.handleCreateTranslation)
 	api.Get("/translations/{id}", s.handleGetTranslation)
@@ -113,7 +115,7 @@ func (s *Server) runTranslation(parent context.Context, t *store.Translation) {
 	s.translate.mu.Unlock()
 	defer func() {
 		s.translate.mu.Lock()
-		s.translate.running, s.translate.cancel = 0, nil
+		s.translate.running, s.translate.cancel, s.translate.active = 0, nil, 0
 		s.translate.mu.Unlock()
 	}()
 
@@ -197,7 +199,13 @@ func (s *Server) translateOnce(ctx context.Context, t *store.Translation, dir st
 		MaxChunk: s.cfg.TranslateChunk,
 		Parallel: s.cfg.TranslateParallel,
 		Log:      logf,
+		Meta: func(title, author string) {
+			_ = s.store.TranslationMeta(context.WithoutCancel(ctx), t.ID, title, author)
+		},
 		Progress: func(p translate.Progress) {
+			s.translate.mu.Lock()
+			s.translate.active = p.Active
+			s.translate.mu.Unlock()
 			_ = s.store.TranslationProgress(context.WithoutCancel(ctx), t.ID, p.Step, p.Units, p.Chars, p.Batches, p.Done, p.Cached)
 		},
 	}
@@ -344,7 +352,42 @@ func (s *Server) handleListTranslations(w http.ResponseWriter, r *http.Request) 
 		s.fail(w, err, "translations")
 		return
 	}
+	for i := range list {
+		s.liveActive(&list[i])
+	}
 	writeJSON(w, http.StatusOK, list)
+}
+
+// liveActive fills in how many parts of a running job are at Pocket AI.
+func (s *Server) liveActive(t *store.Translation) {
+	s.translate.mu.Lock()
+	defer s.translate.mu.Unlock()
+	if t.Status == "running" && s.translate.running == t.ID {
+		t.Active = s.translate.active
+	}
+}
+
+// handleTranslateActive is the sidebar's light poll: the person's running
+// job (if any) and how many wait.
+func (s *Server) handleTranslateActive(w http.ResponseWriter, r *http.Request) {
+	list, err := s.store.ListTranslations(r.Context(), actorID(r.Context()), 0)
+	if err != nil {
+		s.fail(w, err, "translations")
+		return
+	}
+	out := map[string]any{"running": nil, "queued": 0}
+	queued := 0
+	for i := range list {
+		switch list[i].Status {
+		case "running":
+			s.liveActive(&list[i])
+			out["running"] = list[i]
+		case "queued":
+			queued++
+		}
+	}
+	out["queued"] = queued
+	writeJSON(w, http.StatusOK, out)
 }
 
 func (s *Server) translationOf(w http.ResponseWriter, r *http.Request) *store.Translation {
@@ -358,6 +401,7 @@ func (s *Server) translationOf(w http.ResponseWriter, r *http.Request) *store.Tr
 
 func (s *Server) handleGetTranslation(w http.ResponseWriter, r *http.Request) {
 	if t := s.translationOf(w, r); t != nil {
+		s.liveActive(t)
 		writeJSON(w, http.StatusOK, t)
 	}
 }

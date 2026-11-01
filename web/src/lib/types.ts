@@ -219,7 +219,7 @@ export interface Translation {
   script: 'latin' | 'cyrillic'; model: string; notes: string
   status: TranslationStatus; step: string
   units: number; chars: number; batches: number; done_batches: number; cached_batches: number
-  warnings: string[]; error: string; result_book_id: number
+  warnings: string[]; error: string; result_book_id: number; active: number
   created_at: string; started_at: string; finished_at: string
 }
 export interface TranslateStatus { ready: boolean; detail: string; core: boolean; convert: boolean; parallel: number }

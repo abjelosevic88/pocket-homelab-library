@@ -51,6 +51,7 @@ type Progress struct {
 	Batches int
 	Done    int
 	Cached  int
+	Active  int // requests out at the model right now
 }
 
 // Result describes the translated book.
@@ -68,6 +69,7 @@ type Job struct {
 	Parallel int    // requests at once (default 3)
 	Log      func(format string, a ...any)
 	Progress func(Progress)
+	Meta     func(title, author string) // the book's own title and author, once read
 
 	mu       sync.Mutex
 	prog     Progress
@@ -149,6 +151,19 @@ func (j *Job) Run(ctx context.Context, src, dst string) (*Result, error) {
 	if err != nil {
 		return nil, err
 	}
+	if j.Meta != nil {
+		root, _ := parse(opf)
+		title, author := "", ""
+		if ts := root.find("title"); len(ts) > 0 {
+			title = innerText(opf, ts[0])
+		}
+		for _, c := range root.find("creator") {
+			if author = innerText(opf, c); author != "" {
+				break
+			}
+		}
+		j.Meta(title, author)
+	}
 	docs, err := j.plan(b, opf)
 	if err != nil {
 		return nil, err
@@ -189,7 +204,9 @@ func (j *Job) Run(ctx context.Context, src, dst string) (*Result, error) {
 				if ctx.Err() != nil {
 					continue
 				}
+				j.report(func(p *Progress) { p.Active++ })
 				edits, cached, err := j.batch(ctx, t.d, t.i, t.batch)
+				j.report(func(p *Progress) { p.Active-- })
 				if err != nil {
 					cancel(err)
 					continue

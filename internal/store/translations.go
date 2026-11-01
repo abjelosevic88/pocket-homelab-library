@@ -30,6 +30,7 @@ type Translation struct {
 	Warnings        []string `json:"warnings"`
 	Error           string   `json:"error"`
 	ResultBookID    int64    `json:"result_book_id"`
+	Active          int      `json:"active"` // parts at Pocket AI right now (not stored)
 	CreatedAt       string   `json:"created_at"`
 	StartedAt       string   `json:"started_at"`
 	FinishedAt      string   `json:"finished_at"`
@@ -125,6 +126,13 @@ func (s *Store) StartTranslation(ctx context.Context, id int64) error {
 func (s *Store) TranslationProgress(ctx context.Context, id int64, step string, units, chars, batches, done, cached int) error {
 	_, err := s.DB.ExecContext(ctx, `UPDATE translations SET step = ?, units = ?, chars = ?, batches = ?, done_batches = ?, cached_batches = ? WHERE id = ? AND status = 'running'`,
 		step, units, chars, batches, done, cached, id)
+	return err
+}
+
+// TranslationMeta stores the title and author read from the book itself.
+func (s *Store) TranslationMeta(ctx context.Context, id int64, title, author string) error {
+	_, err := s.DB.ExecContext(ctx, `UPDATE translations SET title = CASE WHEN ? != '' THEN ? ELSE title END, author = CASE WHEN ? != '' THEN ? ELSE author END WHERE id = ?`,
+		title, title, author, author, id)
 	return err
 }
 
