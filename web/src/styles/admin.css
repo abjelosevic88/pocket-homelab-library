@@ -178,3 +178,5 @@
 .sb-tr-ico.busy .icon { color: var(--accent); animation: tr-pulse-ico 1.6s ease-in-out infinite; }
 @keyframes tr-pulse-ico { 0%, 100% { opacity: 1; } 50% { opacity: .4; } }
 @media (prefers-reduced-motion: reduce) { .tr-bar .done, .tr-bar .flying, .tr-bar.indeterminate::after, .tr-dots i, .sb-tr-ico.busy .icon { animation: none; } }
+.tr-sr { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.tr-sr .icon { flex-shrink: 0; color: var(--muted); }

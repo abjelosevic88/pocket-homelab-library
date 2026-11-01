@@ -192,7 +192,7 @@ function JobCard({ j, onLog, onCancel, onRetry, onDelete }: { j: Translation; on
         <div className="row top">
           <div className="grow" style={{ minWidth: 0 }}>
             <b className="tr-title">{j.title || j.source_name}</b>{j.author && <span className="muted"> — {j.author}</span>}
-            {j.title_translated && j.title_translated !== j.title && <div className="small"><Icon name="arrow-right" size={12} /> {j.title_translated}</div>}
+            {j.title_translated && j.title_translated !== j.title && <div className="small tr-sr"><Icon name="arrow-right" size={13} /><span>{j.title_translated}</span></div>}
           </div>
           <span className={`pill ${cls}`}>{running && <span className="spinner" style={{ width: 10, height: 10 }} />}{label}</span>
         </div>
