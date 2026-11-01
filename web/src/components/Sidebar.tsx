@@ -156,7 +156,7 @@ export function Sidebar({ onNavigate }: { onNavigate: () => void }) {
       <div className="sb-foot">
         <Link to="/settings" className="sb-foot-link" onClick={onNavigate}><Icon name="settings" size={15} />Settings</Link>
         {editor && <Link to="/admin" className="sb-foot-link" onClick={onNavigate}><Icon name="wrench" size={15} />Admin</Link>}
-        <button type="button" className="sb-foot-link" onClick={() => { onNavigate(); window.dispatchEvent(new CustomEvent('plb:shortcuts')) }}><Icon name="keyboard" size={15} />Shortcuts</button>
+        <button type="button" className="sb-foot-link icon-only" title="Keyboard shortcuts (?)" aria-label="Keyboard shortcuts" onClick={() => { onNavigate(); window.dispatchEvent(new CustomEvent('plb:shortcuts')) }}><Icon name="keyboard" size={15} /></button>
       </div>
     </aside>
   )
