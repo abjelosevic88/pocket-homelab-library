@@ -28,6 +28,7 @@ var linkOffers = []core.Offer{
 var linkUses = []core.Use{
 	{App: "bookshelf", Scopes: []string{"books:read"}, Reason: "Show your rating and reading status from Pocket Bookshelf on each book's page"},
 	core.InferenceUse(), // Translate: books into Serbian with your Pocket AI
+	requestsUse,         // Get it: the audiobook, another language, more by the author
 }
 
 type linkRoute struct {

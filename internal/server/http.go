@@ -92,6 +92,7 @@ func (s *Server) Router() http.Handler {
 				s.routesReader(api)
 				s.routesDevices(api)
 				s.routesTranslate(api)
+				s.routesRequests(api)
 			})
 		})
 	})

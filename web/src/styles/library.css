@@ -317,3 +317,14 @@
 .tag-rules li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--hairline); }
 .tags-actions { position: sticky; bottom: calc(12px + env(safe-area-inset-bottom)); display: flex; align-items: center; gap: 8px; margin-top: 14px; padding: 10px 12px; border-radius: var(--radius-lg); background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-lg); }
 @media (max-width: 520px) { .tag-bar { flex-basis: 44px; } }
+
+/* Get it (Pocket Requests): the audiobook, other languages, more by the author */
+.get-it h3 { display: flex; align-items: center; gap: 6px; }
+.get-it-open { margin-left: auto; font-weight: 400; }
+.get-it-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+.get-it-row:first-of-type { border-top: 0; }
+.get-it-kind { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.get-it-state { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); text-align: right; }
+.get-it .core-hint, .get-it-note { margin: 8px 0 0; }
+.more-tile .tile-art { position: relative; display: block; }
+.more-badge { position: absolute; left: 6px; bottom: 6px; font-size: 11px; padding: 2px 6px; border-radius: 6px; background: rgba(0, 0, 0, .72); color: #fff; }

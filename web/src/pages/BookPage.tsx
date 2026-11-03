@@ -12,6 +12,7 @@ import { Icon } from '../components/icons'
 import { BookCard, Cover, Progress, Rail, Stars } from '../components/cards'
 import { useCrumb } from '../components/Layout'
 import { type Anchor, Confirm, Loading, MenuButton, type MenuItem, Modal, Popover, download, errMsg, rectOf, useToast } from '../components/ui'
+import { GetItCard } from '../components/GetIt'
 import { SendButton } from '../components/SendButton'
 import { TranslateBookDialog } from '../components/TranslateOptions'
 import { ShelfPicker } from '../components/ShelfPicker'
@@ -186,6 +187,7 @@ export default function BookPage() {
           <Highlights bookId={b.id} count={b.annotations} />
           <History b={b} onChange={reload} />
           {b.bookshelf && <BookshelfCard bs={b.bookshelf} />}
+          {b.kind === 'book' && <GetItCard bookId={b.id} />}
           <section className="card side-card">
             <h3>Details</h3>
             <dl className="facts">

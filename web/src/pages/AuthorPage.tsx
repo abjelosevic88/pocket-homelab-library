@@ -10,6 +10,7 @@ import { Img, SeriesTile } from '../components/cards'
 import { BookGrid, useSelection } from '../components/BookGrid'
 import { BulkBar } from '../components/BulkBar'
 import { useCrumb } from '../components/Layout'
+import { AuthorMoreSection } from '../components/GetIt'
 import { Loading, MenuButton, Modal, Spinner, errMsg, useToast } from '../components/ui'
 
 type R = { author: Author; books: Book[]; series: Series[] }
@@ -59,6 +60,7 @@ export default function AuthorPage() {
         <h2 className="section-h">Books</h2>
         <BookGrid books={data.books} view={view} size={(settings?.card_size || 'm') as 's'} sel={sel.sel} onToggle={sel.toggle} showSeries />
       </section>
+      <AuthorMoreSection authorId={a.id} name={a.name} />
       <BulkBar ids={[...sel.sel]} onClear={sel.clear} onDone={() => { sel.clear(); reload() }} />
       {edit && <RenameAuthor a={a} onClose={() => setEdit(false)} onSaved={nid => { setEdit(false); if (nid && nid !== a.id) navigate(`/author/${nid}`, { replace: true }); else reload() }} />}
     </div>
