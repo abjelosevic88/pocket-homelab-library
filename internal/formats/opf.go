@@ -330,15 +330,16 @@ func parseOPF(r io.Reader) (*opfInfo, error) {
 	return info, nil
 }
 
-// splitAuthors separates "A & B" / "A and B" lists Calibre and others write into one creator.
+// splitAuthors separates "A & B" / "A; B" lists Calibre and others write into one
+// creator, and drops the stray separators some tools leave ("Andy Weir;").
 func splitAuthors(s string) []string {
 	s = cleanSpace(s)
 	if s == "" {
 		return nil
 	}
 	var out []string
-	for _, p := range strings.Split(s, " & ") {
-		if p = strings.TrimSpace(p); p != "" {
+	for _, p := range strings.FieldsFunc(strings.ReplaceAll(s, " & ", ";"), func(r rune) bool { return r == ';' }) {
+		if p = strings.Trim(strings.TrimSpace(p), ",;"); p != "" {
 			out = append(out, p)
 		}
 	}
