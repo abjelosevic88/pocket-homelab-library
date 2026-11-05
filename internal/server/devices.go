@@ -212,6 +212,19 @@ func cleanDeviceSettings(d *store.Device) error {
 			out["folder"] = strings.TrimSpace(folder)
 		}
 	}
+	switch d.Kind {
+	case "crosspoint", "koreader", "kobo":
+		// what its catalogue shows: everything, one library or one shelf
+		cat, _ := in["catalog"].(string)
+		kind, id, _ := strings.Cut(cat, ":")
+		switch {
+		case cat == "":
+		case (kind == "library" || kind == "shelf") && id != "" && strings.Trim(id, "0123456789") == "":
+			out["catalog"] = cat
+		default:
+			return errors.New("catalog is empty, library:<id> or shelf:<id>")
+		}
+	}
 	switch d.Format {
 	case "", "epub", "kepub", "pdf", "azw3", "mobi", "original":
 	default:

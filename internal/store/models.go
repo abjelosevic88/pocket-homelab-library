@@ -113,6 +113,7 @@ type Book struct {
 	Locked           []string          `json:"locked"`
 	MetaSource       string            `json:"meta_source"`
 	Missing          bool              `json:"missing"`
+	EReaderOff       bool              `json:"ereader_off"` // kept off e-readers' catalogues
 	AddedAt          string            `json:"added_at"`
 	UpdatedAt        string            `json:"updated_at"`
 	Formats          []string          `json:"formats"`         // distinct formats of its files

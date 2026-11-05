@@ -74,7 +74,7 @@ export interface Book {
   series_id: number; series: string; series_index: number; tags: string[]
   pages: number; words: number; kind: 'book' | 'comic' | 'manga'; reading_direction: 'ltr' | 'rtl'; age_rating: string
   cover: string /* URL, '' = none; add ?w=200|400|800 */; cover_color: string
-  locked: string[]; meta_source: string; missing: boolean; added_at: string; updated_at: string
+  locked: string[]; meta_source: string; missing: boolean; ereader_off?: boolean /* kept off e-readers' catalogues */; added_at: string; updated_at: string
   formats: string[]
   files?: BookFile[] // detail only
   state?: UserBook
@@ -228,3 +228,7 @@ export interface AIModels { models: { id: string; name: string; description?: st
 /** The person's entry for a book in Pocket Bookshelf. linked: Bookshelf keeps it as this book (else a guess by ISBN or title); unlinked: they unlinked it. */
 export interface BookshelfInfo { available: boolean; linked?: boolean; unlinked?: boolean; id?: number; title?: string; url?: string; rating?: number; status?: string; can_write?: boolean }
 export interface BookshelfHit { id: number; title: string; authors: string; status: string; rating: number }
+
+export type ReviewFlag = 'junk_title' | 'title_is_author' | 'uploader_author' | 'no_author' | 'duplicate' | 'no_cover'
+export interface ReviewItem { id: number; library_id: number; library: string; title: string; authors: string[]; cover: string; ereader_off: boolean; file: string; flags: ReviewFlag[]; dupes?: number[] }
+export interface ReviewPage { flags: ReviewFlag[]; counts: Partial<Record<ReviewFlag, number>>; total: number; items: ReviewItem[] }

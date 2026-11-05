@@ -19,6 +19,7 @@ import AuthorPage from './pages/AuthorPage'
 import SeriesList from './pages/SeriesList'
 import SeriesPage from './pages/SeriesPage'
 import Tags from './pages/Tags'
+import Review from './pages/Review'
 import Shelves from './pages/Shelves'
 import ShelfPage from './pages/ShelfPage'
 import Reading from './pages/Reading'
@@ -62,6 +63,7 @@ function App() {
           <Route path="/series" element={<SeriesList />} />
           <Route path="/series/:id" element={<SeriesPage />} />
           <Route path="/tags" element={<Tags />} />
+          <Route path="/review" element={<Review />} />
           <Route path="/shelves" element={<Shelves />} />
           <Route path="/shelf/:id" element={<ShelfPage />} />
           <Route path="/reading/:tab?" element={<Reading />} />

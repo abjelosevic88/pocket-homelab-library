@@ -20,6 +20,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -186,8 +187,9 @@ func navEntry(id, title, href, kind, about string, count int) atomEntry {
 type opdsCtx struct {
 	u         *store.User
 	login     *syncLogin
-	libs      []int64
-	crossview bool // a CrossPoint: EPUBs (or convertible to EPUB) only
+	libs      []int64            // the libraries the catalogue shows (scope.Libraries)
+	scope     store.CatalogScope // what this device's catalogue may show
+	crossview bool               // a CrossPoint: EPUBs (or convertible to EPUB) only
 	convert   bool
 }
 
@@ -195,7 +197,48 @@ func (s *Server) opdsContext(r *http.Request) *opdsCtx {
 	ctx := r.Context()
 	u := userFrom(ctx)
 	l := loginFrom(ctx)
-	return &opdsCtx{u: u, login: l, libs: s.visibleLibraries(ctx, u), crossview: l.deviceKind() == "crosspoint", convert: s.cfg.ConvertPath() != ""}
+	sc := s.catalogScope(ctx, u, l.device, s.visibleLibraries(ctx, u))
+	return &opdsCtx{u: u, login: l, libs: sc.Libraries, scope: sc, crossview: l.deviceKind() == "crosspoint", convert: s.cfg.ConvertPath() != ""}
+}
+
+// catalogScope is what a device's catalogue shows: its "catalog" setting
+// ("" = everything, "library:<id>", "shelf:<id>", a shelf of the device's
+// person, hand-picked or smart), never books kept off e-readers. A library
+// or shelf that is gone shows nothing rather than everything.
+func (s *Server) catalogScope(ctx context.Context, u *store.User, d *store.Device, libs []int64) store.CatalogScope {
+	sc := store.CatalogScope{Libraries: libs, EReader: true}
+	if d == nil {
+		return sc
+	}
+	setting, _ := d.Settings["catalog"].(string)
+	kind, idText, _ := strings.Cut(setting, ":")
+	id, _ := strconv.ParseInt(idText, 10, 64)
+	switch kind {
+	case "library":
+		sc.Libraries = []int64{}
+		for _, l := range libs {
+			if l == id {
+				sc.Libraries = []int64{id}
+			}
+		}
+	case "shelf":
+		sc.Restrict, sc.Allow = true, []int64{}
+		sh, err := s.store.GetShelf(ctx, u.ID, id)
+		if err != nil {
+			return sc
+		}
+		q := store.BookQuery{ShowHidden: true}
+		if sh.Kind == "smart" {
+			_ = json.Unmarshal([]byte(sh.Filter), &q)
+		} else {
+			q.Shelf, q.Status = sh.ID, "any"
+		}
+		q.UserID, q.Libraries, q.Offset, q.Limit = u.ID, libs, 0, 0
+		if ids, err := s.store.BookIDs(ctx, q); err == nil {
+			sc.Allow = ids
+		}
+	}
+	return sc
 }
 
 func pageOf(r *http.Request) int {
@@ -260,7 +303,16 @@ func (s *Server) bookFeed(w http.ResponseWriter, r *http.Request, id, title, sel
 	q.UserID = oc.u.ID
 	if q.Libraries == nil {
 		q.Libraries = oc.libs
+	} else {
+		in := []int64{}
+		for _, l := range q.Libraries {
+			if slices.Contains(oc.libs, l) {
+				in = append(in, l)
+			}
+		}
+		q.Libraries = in
 	}
+	q.Allow, q.Restrict, q.EReader = oc.scope.Allow, oc.scope.Restrict, oc.scope.EReader
 	if oc.crossview && !oc.convert {
 		q.Format = "epub"
 	}
@@ -567,7 +619,14 @@ func (s *Server) opdsLibraries(w http.ResponseWriter, r *http.Request) {
 	f.commonLinks("/opds/libraries", opdsNav)
 	libs, _ := s.store.LibrariesFor(r.Context(), oc.u)
 	for _, l := range libs {
-		f.Entries = append(f.Entries, navEntry(fmt.Sprintf("library:%d", l.ID), l.Name, fmt.Sprintf("/opds/libraries/%d", l.ID), opdsAcq, "", l.Books))
+		if !slices.Contains(oc.libs, l.ID) {
+			continue
+		}
+		n := l.Books
+		if oc.scope.Restrict {
+			n = 0 // only part of it is on this device's catalogue
+		}
+		f.Entries = append(f.Entries, navEntry(fmt.Sprintf("library:%d", l.ID), l.Name, fmt.Sprintf("/opds/libraries/%d", l.ID), opdsAcq, "", n))
 	}
 	s.writeFeed(w, r, f, opdsNav)
 }
@@ -578,7 +637,7 @@ func (s *Server) opdsLibrary(w http.ResponseWriter, r *http.Request) {
 	var lib *store.Library
 	libs, _ := s.store.LibrariesFor(r.Context(), oc.u)
 	for i := range libs {
-		if libs[i].ID == id {
+		if libs[i].ID == id && slices.Contains(oc.libs, id) {
 			lib = &libs[i]
 		}
 	}
@@ -594,10 +653,10 @@ func (s *Server) opdsLibrary(w http.ResponseWriter, r *http.Request) {
 }
 
 // allAuthors loads every author with books the person can open.
-func (s *Server) allAuthors(ctx context.Context, libs []int64) []store.Author {
+func (s *Server) allAuthors(ctx context.Context, sc store.CatalogScope) []store.Author {
 	var out []store.Author
 	for off := 0; ; off += 1000 {
-		list, total, err := s.store.ListAuthors(ctx, libs, "", off, 1000)
+		list, total, err := s.store.ListAuthorsIn(ctx, sc, "", off, 1000)
 		if err != nil {
 			break
 		}
@@ -629,7 +688,7 @@ func (s *Server) opdsAuthorLetters(w http.ResponseWriter, r *http.Request) {
 	f := newFeed("authors", "Authors")
 	f.commonLinks("/opds/authors", opdsNav)
 	counts := map[string]int{}
-	for _, a := range s.allAuthors(r.Context(), oc.libs) {
+	for _, a := range s.allAuthors(r.Context(), oc.scope) {
 		counts[letterOf(a.SortName)]++
 	}
 	letters := make([]string, 0, len(counts))
@@ -648,7 +707,7 @@ func (s *Server) opdsAuthorsByLetter(w http.ResponseWriter, r *http.Request) {
 	letter := chi.URLParam(r, "letter")
 	self := "/opds/authors/letter/" + url.PathEscape(letter)
 	var list []store.Author
-	for _, a := range s.allAuthors(r.Context(), oc.libs) {
+	for _, a := range s.allAuthors(r.Context(), oc.scope) {
 		if letterOf(a.SortName) == letter {
 			list = append(list, a)
 		}
@@ -684,7 +743,7 @@ func (s *Server) opdsAuthor(w http.ResponseWriter, r *http.Request) {
 func (s *Server) opdsSeriesList(w http.ResponseWriter, r *http.Request) {
 	oc := s.opdsContext(r)
 	page := pageOf(r)
-	list, total, err := s.store.ListSeries(r.Context(), oc.u.ID, oc.libs, "", (page-1)*opdsPageSize, opdsPageSize)
+	list, total, err := s.store.ListSeriesIn(r.Context(), oc.u.ID, oc.scope, "", (page-1)*opdsPageSize, opdsPageSize)
 	if err != nil {
 		http.Error(w, "catalogue unavailable", http.StatusInternalServerError)
 		return
@@ -710,7 +769,7 @@ func (s *Server) opdsSeries(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) opdsTags(w http.ResponseWriter, r *http.Request) {
 	oc := s.opdsContext(r)
-	tags, err := s.store.ListTags(r.Context(), oc.libs, "", 2000)
+	tags, err := s.store.ListTagsIn(r.Context(), oc.scope, "", 2000)
 	if err != nil {
 		http.Error(w, "catalogue unavailable", http.StatusInternalServerError)
 		return

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"strings"
 	"time"
 )
@@ -13,13 +14,18 @@ import (
 func (s *Store) SyncDeviceByToken(ctx context.Context, uid, tokenID int64) (*Device, error) {
 	var d Device
 	var tok sql.NullInt64
-	err := s.DB.QueryRowContext(ctx, `SELECT id, kind, name, email, address, format, token_id, is_default, last_seen_at, created_at
+	var settings string
+	err := s.DB.QueryRowContext(ctx, `SELECT id, kind, name, email, address, format, token_id, settings, is_default, last_seen_at, created_at
 		FROM devices WHERE user_id = ? AND token_id = ? ORDER BY id LIMIT 1`, uid, tokenID).
-		Scan(&d.ID, &d.Kind, &d.Name, &d.Email, &d.Address, &d.Format, &tok, &d.IsDefault, &d.LastSeenAt, &d.CreatedAt)
+		Scan(&d.ID, &d.Kind, &d.Name, &d.Email, &d.Address, &d.Format, &tok, &settings, &d.IsDefault, &d.LastSeenAt, &d.CreatedAt)
 	if err != nil {
 		return nil, notFound(err)
 	}
 	d.TokenID = tok.Int64
+	_ = json.Unmarshal([]byte(settings), &d.Settings)
+	if d.Settings == nil {
+		d.Settings = map[string]any{}
+	}
 	return &d, nil
 }
 

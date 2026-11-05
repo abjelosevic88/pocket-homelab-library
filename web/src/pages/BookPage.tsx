@@ -111,6 +111,7 @@ export default function BookPage() {
     ...(editor ? ['sep' as const,
       { label: 'Edit details', icon: 'edit', onSelect: () => setEditing(true) },
       ...(files.some(f => TRANSLATABLE.has(f.format)) ? [{ label: 'Translate to Serbian…', icon: 'languages', onSelect: () => setTranslating(true) }] : []),
+      { label: b.ereader_off ? 'Show on e-readers again' : 'Keep off e-readers', icon: b.ereader_off ? 'eye' : 'eye-off', onSelect: async () => { try { await api.put(`${V1}/books/ereader`, { ids: [b.id], off: !b.ereader_off }); await reload(); toast(b.ereader_off ? 'Back in e-readers\' catalogues' : 'Kept off e-readers\' catalogues') } catch (e) { toast(errMsg(e), 'err') } } },
       { label: 'Read the files again', icon: 'refresh', onSelect: async () => { try { await api.post(`${V1}/books/${b.id}/rescan`); await reload(); toast('Read again from its files') } catch (e) { toast(errMsg(e), 'err') } } },
       { label: 'Delete book and files…', icon: 'trash', danger: true, onSelect: () => setDeleting(true) }] : []),
   ]
@@ -161,6 +162,7 @@ export default function BookPage() {
             <MenuButton label="More" className="btn ghost icon-only lg" items={menu} align="right"><Icon name="more" size={18} /></MenuButton>
           </div>
           {translations.length > 0 && <BookTranslations b={b} list={translations} />}
+          {b.ereader_off && <div className="book-translations muted"><span><Icon name="eye-off" size={13} /> Kept off e-readers: no device's catalogue lists it</span></div>}
           {b.missing && <div className="callout warn small"><Icon name="alert" size={14} />Its files are gone from the library folder. Your progress and highlights stay.</div>}
           {b.tags.length > 0 && <p className="book-genres">{b.tags.slice(0, 14).map(t => <Link key={t} className="chip" to={`/library?tag=${encodeURIComponent(t)}`}>{t}</Link>)}</p>}
         </div>

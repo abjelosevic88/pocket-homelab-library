@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, V1 } from '../lib/api'
 import { useApp } from '../lib/app-context'
-import type { Device, DeviceCreated, DeviceKind, DeviceSetup as Setup, Send } from '../lib/types'
+import type { Device, DeviceCreated, DeviceKind, DeviceSetup as Setup, Library, Send, Shelf } from '../lib/types'
 import { ago, fmtBytes, fmtDateTime } from '../lib/format'
 import { Confirm, Empty, Field, Loading, MenuButton, Modal, PageHeader, Spinner, Switch, errMsg, useAsync, useToast } from '../components/ui'
 import { Icon } from '../components/icons'
@@ -219,12 +219,22 @@ function AddDevice({ onClose, onDone }: { onClose: () => void; onDone: (c: Devic
 function EditDevice({ device, onClose, onSaved }: { device: Device; onClose: () => void; onSaved: () => void }) {
   const { toast } = useToast()
   const s = device.settings || {}
-  const [f, setF] = useState({ name: device.name, email: device.email, address: device.address, folder: String(s.folder || '/Books'), push: !!s.push })
+  const [f, setF] = useState({ name: device.name, email: device.email, address: device.address, folder: String(s.folder || '/Books'), push: !!s.push, catalog: String(s.catalog || '') })
   const [busy, setBusy] = useState(false)
+  const reader = device.kind === 'crosspoint' || device.kind === 'koreader' || device.kind === 'kobo'
+  const [libs, setLibs] = useState<Library[]>([])
+  const [shelves, setShelves] = useState<Shelf[]>([])
+  useEffect(() => {
+    if (!reader) return
+    api.get<Library[]>(`${V1}/libraries`).then(setLibs).catch(() => {})
+    api.get<Shelf[]>(`${V1}/shelves`).then(setShelves).catch(() => {})
+  }, [reader])
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true)
     try {
-      await api.put(`${V1}/devices/${device.id}`, { name: f.name.trim(), email: f.email.trim(), address: f.address.trim(), settings: { ...s, folder: f.folder.trim() || '/Books', push: f.push && !!f.address.trim() } })
+      const settings: Record<string, unknown> = { ...s, folder: f.folder.trim() || '/Books', push: f.push && !!f.address.trim() }
+      if (reader) settings.catalog = f.catalog
+      await api.put(`${V1}/devices/${device.id}`, { name: f.name.trim(), email: f.email.trim(), address: f.address.trim(), settings })
       toast('Saved'); onSaved()
     } catch (e) { toast(errMsg(e), 'err') } finally { setBusy(false) }
   }
@@ -238,6 +248,13 @@ function EditDevice({ device, onClose, onSaved }: { device: Device; onClose: () 
           <Field label="Folder on the X4"><input value={f.folder} onChange={e => setF({ ...f, folder: e.target.value })} /></Field>
           <div className="row" style={{ gap: 10 }}><Switch checked={f.push && !!f.address.trim()} disabled={!f.address.trim()} onChange={v => setF({ ...f, push: v })} label="Push straight to the X4" /><span className="small">Push books straight to the X4 when it's reachable</span></div>
         </>}
+        {reader && <Field label="Its catalogue shows" help="What this device's catalogue (OPDS) lists: search, authors, series and “recently added” included. Books kept off e-readers (Review) never show.">
+          <select value={f.catalog} onChange={e => setF({ ...f, catalog: e.target.value })}>
+            <option value="">Everything you can open</option>
+            {libs.length > 0 && <optgroup label="One library">{libs.map(l => <option key={l.id} value={`library:${l.id}`}>{l.name}</option>)}</optgroup>}
+            {shelves.length > 0 && <optgroup label="One shelf">{shelves.map(sh => <option key={sh.id} value={`shelf:${sh.id}`}>{sh.name}{sh.kind === 'smart' ? ' (smart)' : ''}</option>)}</optgroup>}
+          </select>
+        </Field>}
         <div className="form-actions"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy}>Save</button></div>
       </form>
     </Modal>

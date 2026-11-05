@@ -547,6 +547,32 @@ type BookQuery struct {
 	Libraries  []int64 `json:"-"`
 	ShowHidden bool    `json:"-"` // include books the person hid
 	Seed       int64   `json:"-"` // random order seed
+	// E-reader catalogues: Allow (when Restrict) limits the books to these,
+	// EReader leaves out books kept off e-readers.
+	Allow    []int64 `json:"-"`
+	Restrict bool    `json:"-"`
+	EReader  bool    `json:"-"`
+}
+
+// CatalogScope is which books a listing of authors, series or tags counts:
+// the libraries, and for e-reader catalogues the books it may show.
+type CatalogScope struct {
+	Libraries []int64
+	Allow     []int64 // with Restrict: only these books
+	Restrict  bool
+	EReader   bool // leave out books kept off e-readers
+}
+
+// cond is the condition on books b for the scope.
+func (sc CatalogScope) cond() string {
+	c := "b.missing = 0 AND b.library_id IN " + inInts(sc.Libraries)
+	if sc.Restrict {
+		c += " AND b.id IN " + inInts(sc.Allow)
+	}
+	if sc.EReader {
+		c += " AND b.ereader_off = 0"
+	}
+	return c
 }
 
 // FTSQuery turns typed words into an FTS5 prefix query ("lord rin" → "lord"* "rin"*).
@@ -578,6 +604,12 @@ func inInts(ids []int64) string {
 func (q *BookQuery) where() (string, []any) {
 	conds := []string{"b.library_id IN " + inInts(q.Libraries)}
 	var args []any
+	if q.Restrict {
+		conds = append(conds, "b.id IN "+inInts(q.Allow))
+	}
+	if q.EReader {
+		conds = append(conds, "b.ereader_off = 0")
+	}
 	if q.Missing != "files" {
 		conds = append(conds, "b.missing = 0")
 	}
@@ -706,7 +738,7 @@ func (q *BookQuery) orderBy() string {
 
 const bookCols = `b.id, b.library_id, b.group_key, b.title, b.sort_title, b.subtitle, b.language, b.publisher, b.published, b.isbn, b.identifiers,
 	COALESCE(b.series_id, 0), COALESCE(se.name, ''), b.series_index, b.pages, b.words, b.kind, b.reading_direction, b.age_rating,
-	b.cover, b.cover_color, b.locked, b.meta_source, b.missing, b.added_at, b.updated_at,
+	b.cover, b.cover_color, b.locked, b.meta_source, b.missing, b.ereader_off, b.added_at, b.updated_at,
 	ub.status, ub.rating, ub.favorite, ub.hidden, ub.percentage, ub.locator, ub.file_id, ub.last_read_at, ub.last_device, ub.started_at, ub.finished_at, ub.times_read, ub.updated_at`
 
 const bookFrom = ` FROM books b LEFT JOIN series se ON se.id = b.series_id LEFT JOIN user_books ub ON ub.book_id = b.id AND ub.user_id = ? `
@@ -722,7 +754,7 @@ func scanBook(row interface{ Scan(...any) error }) (*Book, error) {
 	}
 	if err := row.Scan(&b.ID, &b.LibraryID, &b.GroupKey, &b.Title, &b.SortTitle, &b.Subtitle, &b.Language, &b.Publisher, &b.Published, &b.ISBN, &ids,
 		&b.SeriesID, &b.Series, &b.SeriesIndex, &b.Pages, &b.Words, &b.Kind, &b.ReadingDirection, &b.AgeRating,
-		&b.Cover, &b.CoverColor, &locked, &b.MetaSource, &b.Missing, &b.AddedAt, &b.UpdatedAt,
+		&b.Cover, &b.CoverColor, &locked, &b.MetaSource, &b.Missing, &b.EReaderOff, &b.AddedAt, &b.UpdatedAt,
 		&st.status, &st.rating, &st.fav, &st.hidden, &st.pct, &st.locator, &st.fileID, &st.lastRead, &st.lastDevice, &st.started, &st.finished, &st.timesRead, &st.updated); err != nil {
 		return nil, notFound(err)
 	}
@@ -753,6 +785,35 @@ func CoverURL(bookID int64, name string) string {
 		v = v[i+1:]
 	}
 	return fmt.Sprintf("/api/v1/books/%d/cover?v=%s", bookID, v)
+}
+
+// BookIDs returns the ids of every book a query matches (no paging).
+func (s *Store) BookIDs(ctx context.Context, q BookQuery) ([]int64, error) {
+	where, args := q.where()
+	rows, err := s.DB.QueryContext(ctx, `SELECT b.id`+bookFrom+`WHERE `+where, append([]any{q.UserID}, args...)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	ids := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
+// SetEReaderOff keeps books off (or lets them back onto) e-readers' catalogues.
+func (s *Store) SetEReaderOff(ctx context.Context, ids []int64, off bool) error {
+	v := 0
+	if off {
+		v = 1
+	}
+	_, err := s.DB.ExecContext(ctx, `UPDATE books SET ereader_off = ? WHERE id IN `+inInts(ids), v)
+	return err
 }
 
 // ListBooks returns one page of books for a query, and how many match.
@@ -887,7 +948,12 @@ func (s *Store) GetBookAny(ctx context.Context, id int64) (*Book, error) {
 
 // ListAuthors lists authors with books in the libraries, optionally matching q.
 func (s *Store) ListAuthors(ctx context.Context, libraries []int64, q string, offset, limit int) ([]Author, int, error) {
-	where := `a.id IN (SELECT ba.author_id FROM book_authors ba JOIN books b ON b.id = ba.book_id WHERE b.missing = 0 AND b.library_id IN ` + inInts(libraries) + `)`
+	return s.ListAuthorsIn(ctx, CatalogScope{Libraries: libraries}, q, offset, limit)
+}
+
+// ListAuthorsIn is ListAuthors over a catalogue scope.
+func (s *Store) ListAuthorsIn(ctx context.Context, sc CatalogScope, q string, offset, limit int) ([]Author, int, error) {
+	where := `a.id IN (SELECT ba.author_id FROM book_authors ba JOIN books b ON b.id = ba.book_id WHERE ` + sc.cond() + `)`
 	var args []any
 	if q = strings.TrimSpace(q); q != "" {
 		where += ` AND a.name LIKE ?`
@@ -901,7 +967,7 @@ func (s *Store) ListAuthors(ctx context.Context, libraries []int64, q string, of
 		limit = 200
 	}
 	rows, err := s.DB.QueryContext(ctx, `SELECT a.id, a.name, a.sort_name, a.photo,
-		(SELECT COUNT(1) FROM book_authors ba JOIN books b ON b.id = ba.book_id WHERE ba.author_id = a.id AND b.missing = 0 AND b.library_id IN `+inInts(libraries)+`)
+		(SELECT COUNT(1) FROM book_authors ba JOIN books b ON b.id = ba.book_id WHERE ba.author_id = a.id AND `+sc.cond()+`)
 		FROM authors a WHERE `+where+` ORDER BY a.sort_name COLLATE NOCASE LIMIT ? OFFSET ?`, append(args, limit, max(offset, 0))...)
 	if err != nil {
 		return nil, 0, err
@@ -999,7 +1065,12 @@ func (s *Store) AuthorsToEnrich(ctx context.Context, limit int) ([]Author, error
 
 // ListSeries lists series with books in the libraries.
 func (s *Store) ListSeries(ctx context.Context, uid int64, libraries []int64, q string, offset, limit int) ([]Series, int, error) {
-	inLib := `b.missing = 0 AND b.library_id IN ` + inInts(libraries)
+	return s.ListSeriesIn(ctx, uid, CatalogScope{Libraries: libraries}, q, offset, limit)
+}
+
+// ListSeriesIn is ListSeries over a catalogue scope.
+func (s *Store) ListSeriesIn(ctx context.Context, uid int64, sc CatalogScope, q string, offset, limit int) ([]Series, int, error) {
+	inLib := sc.cond()
 	where := `se.id IN (SELECT b.series_id FROM books b WHERE ` + inLib + `)`
 	var args []any
 	if q = strings.TrimSpace(q); q != "" {
@@ -1031,7 +1102,7 @@ func (s *Store) ListSeries(ctx context.Context, uid int64, libraries []int64, q 
 	}
 	rows.Close()
 	for i := range out {
-		out[i].Covers = s.seriesCovers(ctx, out[i].ID, libraries)
+		out[i].Covers = s.seriesCovers(ctx, out[i].ID, sc.Libraries)
 	}
 	return out, total, rows.Err()
 }
@@ -1074,6 +1145,11 @@ type Tag struct {
 
 // ListTags lists tags in the libraries, most used first.
 func (s *Store) ListTags(ctx context.Context, libraries []int64, q string, limit int) ([]Tag, error) {
+	return s.ListTagsIn(ctx, CatalogScope{Libraries: libraries}, q, limit)
+}
+
+// ListTagsIn is ListTags over a catalogue scope.
+func (s *Store) ListTagsIn(ctx context.Context, sc CatalogScope, q string, limit int) ([]Tag, error) {
 	if limit <= 0 || limit > 2000 {
 		limit = 500
 	}
@@ -1083,7 +1159,7 @@ func (s *Store) ListTags(ctx context.Context, libraries []int64, q string, limit
 		cond = ` AND t.tag LIKE ?`
 		args = append(args, "%"+q+"%")
 	}
-	rows, err := s.DB.QueryContext(ctx, `SELECT t.tag, COUNT(1) FROM book_tags t JOIN books b ON b.id = t.book_id WHERE b.missing = 0 AND b.library_id IN `+inInts(libraries)+cond+
+	rows, err := s.DB.QueryContext(ctx, `SELECT t.tag, COUNT(1) FROM book_tags t JOIN books b ON b.id = t.book_id WHERE `+sc.cond()+cond+
 		` GROUP BY t.tag COLLATE NOCASE ORDER BY COUNT(1) DESC, t.tag COLLATE NOCASE LIMIT ?`, append(args, limit)...)
 	if err != nil {
 		return nil, err

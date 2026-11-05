@@ -66,6 +66,9 @@
   device opening a book you read further elsewhere jumps to that page.
 - An **OPDS catalogue** for KOReader, CrossPoint and any OPDS app: continue reading, want to read, recently
   added, your shelves, authors, series, search, and what you sent to that device.
+  Each device's catalogue can show everything, one library or one shelf (hand-picked or smart), and **Review**
+  lists books that look wrong (junk titles, uploader nicknames as authors, duplicates…) to fix, delete or keep
+  off e-readers.
 - A **KOReader plugin** (also for a jailbroken Kindle): downloads books you sent, uploads highlights and reading
   time, and sets up sync and the catalogue in one tap.
 
