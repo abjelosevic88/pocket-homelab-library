@@ -521,3 +521,30 @@ func TestCrossPointClippings(t *testing.T) {
 		t.Fatalf("bob sees ana's clippings: %v", b)
 	}
 }
+
+func TestReaderBase(t *testing.T) {
+	cfg := testConfig(t.TempDir())
+	cfg.BaseURL, cfg.EReaderURL = "https://library.example.com", "https://ereader.example.com"
+	s := &Server{cfg: cfg}
+	on := func(host string) *http.Request {
+		r := httptest.NewRequest("GET", "/opds/", nil)
+		r.Host = host
+		return r
+	}
+	if got := s.publicBase(on("ereader.example.com")); got != "https://ereader.example.com" {
+		t.Fatalf("on the e-reader address: %s", got)
+	}
+	if got := s.publicBase(on("library.example.com")); got != "https://library.example.com" {
+		t.Fatalf("on the library address: %s", got)
+	}
+	if got := s.publicBase(on("evil.example.com")); got != "https://library.example.com" {
+		t.Fatalf("an unknown host must not leak into links: %s", got)
+	}
+	if got := s.readerBase(on("library.example.com")); got != "https://ereader.example.com" {
+		t.Fatalf("device setup: %s", got)
+	}
+	cfg.EReaderURL = ""
+	if got := s.readerBase(on("library.example.com")); got != "https://library.example.com" {
+		t.Fatalf("without EREADER_URL: %s", got)
+	}
+}

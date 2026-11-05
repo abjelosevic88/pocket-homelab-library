@@ -19,6 +19,7 @@ type Config struct {
 	Host           string
 	Port           int
 	BaseURL        string
+	EReaderURL     string // e-reader-only address (OPDS, KOSync, the KOReader plugin)
 	DataDir        string
 	DBPath         string
 	CoversDir      string
@@ -150,6 +151,7 @@ func Load() (*Config, error) {
 		Host:           env("HOST", "0.0.0.0"),
 		Port:           envInt("PORT", 8080),
 		BaseURL:        strings.TrimRight(env("BASE_URL", ""), "/"),
+		EReaderURL:     strings.TrimRight(env("EREADER_URL", ""), "/"),
 		DataDir:        dataDir,
 		DBPath:         env("DB_PATH", dataDir+"/pocket-library.db"),
 		CoversDir:      env("COVERS_DIR", dataDir+"/covers"),

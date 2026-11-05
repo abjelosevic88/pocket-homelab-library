@@ -10,6 +10,7 @@ Integration values seed the owner's (first admin's) own settings on first start,
 |---|---|---|
 | `PORT` / `HOST` | `8080` / `0.0.0.0` | Listen address |
 | `BASE_URL` | – | Public URL: notification links, the OIDC callback, what Pocket Core shows |
+| `EREADER_URL` | – | A second address that carries only the e-reader doors (`/opds`, `/kosync`, `/koreader`), for when `BASE_URL` is private (a tailnet) and the readers are not on it. Device setup shows this address, and a catalogue read through it links back to it |
 | `DATA_DIR` | `./data` (`/data` in the image) | SQLite database, covers, cache, `secret.key`, backups |
 | `DB_PATH` | `$DATA_DIR/pocket-library.db` | Override the database location |
 | `TZ` | – | Time zone for "today", reading days, streaks and the weekly recap |

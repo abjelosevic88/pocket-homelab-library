@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -343,8 +344,14 @@ type DeviceSetup struct {
 	Steps       []string `json:"steps"`
 }
 
-// publicBase is BASE_URL, or what the request came in on.
+// publicBase is BASE_URL, or what the request came in on. A request that came
+// in on EREADER_URL gets that, so a catalogue read there links back to it.
 func (s *Server) publicBase(r *http.Request) string {
+	if r != nil && s.cfg.EReaderURL != "" {
+		if u, err := url.Parse(s.cfg.EReaderURL); err == nil && strings.EqualFold(u.Host, r.Host) {
+			return s.cfg.EReaderURL
+		}
+	}
 	if s.cfg.BaseURL != "" {
 		return s.cfg.BaseURL
 	}
@@ -358,8 +365,17 @@ func (s *Server) publicBase(r *http.Request) string {
 	return scheme + "://" + r.Host
 }
 
+// readerBase is where e-readers reach the library: EREADER_URL when the box
+// has one (BASE_URL may be private), else the public base.
+func (s *Server) readerBase(r *http.Request) string {
+	if s.cfg.EReaderURL != "" {
+		return s.cfg.EReaderURL
+	}
+	return s.publicBase(r)
+}
+
 func (s *Server) deviceSetup(ctx context.Context, r *http.Request, u *store.User, d *store.Device) DeviceSetup {
-	base := s.publicBase(r)
+	base := s.readerBase(r)
 	st, _ := s.store.GetSettings(ctx, 0)
 	set := DeviceSetup{OPDSURL: base + "/opds", KosyncURL: base + "/kosync", Username: u.Email, HasPassword: d.TokenID > 0, SenderEmail: st.SMTPFrom}
 	sender := st.SMTPFrom
@@ -498,7 +514,7 @@ func (s *Server) handleDeviceProvision(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	st, _ := s.store.GetSettings(ctx, 0)
-	if err := c.AddOPDS(ctx, nz(st.Title, "Pocket Library"), s.publicBase(r)+"/opds", u.Email, plain); err != nil {
+	if err := c.AddOPDS(ctx, nz(st.Title, "Pocket Library"), s.readerBase(r)+"/opds", u.Email, plain); err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}
