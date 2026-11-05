@@ -22,13 +22,15 @@ func (s *Server) routesReview(api chi.Router) {
 	api.Get("/review", s.handleReview)
 	api.Put("/books/ereader", s.handleEReaderOff)
 	api.Post("/books/move", s.handleMoveBooks)
+	api.Get("/review/cleanup", s.handleCleanupPlan)
+	api.Post("/review/cleanup", s.handleCleanupRun)
 }
 
 // Review flags, in the order the page shows them.
 var reviewFlags = []string{"junk_title", "title_is_author", "uploader_author", "no_author", "duplicate", "no_cover"}
 
 var (
-	junkTitleRE = regexp.MustCompile(`(?i)^\(|microsoft word|\.(docx?|pdf|rtf|txt|epub|mobi)\s*\)?$|^(untitled|unknown|bez naslova|nepoznat)|faksimil|\\[0-9]{3}`)
+	junkTitleRE = regexp.MustCompile(`(?i)^\(|microsoft word|\.(docx?|pdf|rtf|txt|epub|mobi)\s*\)?$|^(untitled|unknown|bez naslova|nepoznato?)$|faksimil|\\[0-9]{3}|^[0-9]{6,}$`)
 	uploaderRE  = regexp.MustCompile(`^[a-z0-9._-]{1,24}$`)
 )
 
@@ -67,13 +69,7 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 			libNames[l.ID] = l.Name
 		}
 	}
-	// every author's name, to catch a title that is a person (title and author swapped)
-	authorNames := map[string]bool{}
-	for _, b := range books {
-		for _, a := range b.Authors {
-			authorNames[fold(a)] = true
-		}
-	}
+	people := authorBooks(books)
 	// the same title by the same author (by surname) in the same library
 	groups := map[string][]int64{}
 	keyOf := func(b store.ReviewBook) string {
@@ -101,24 +97,7 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 	counts := map[string]int{}
 	items := []reviewItem{}
 	for _, b := range books {
-		var flags []string
-		t := strings.TrimSpace(b.Title)
-		if junkTitleRE.MatchString(t) {
-			flags = append(flags, "junk_title")
-		}
-		if ft := fold(t); ft != "" && authorNames[ft] {
-			flags = append(flags, "title_is_author")
-		}
-		uploader := len(b.Authors) > 0
-		for _, a := range b.Authors {
-			uploader = uploader && uploaderRE.MatchString(strings.TrimSpace(a))
-		}
-		if uploader {
-			flags = append(flags, "uploader_author")
-		}
-		if len(b.Authors) == 0 {
-			flags = append(flags, "no_author")
-		}
+		flags := badFlags(b, people)
 		var dupes []int64
 		if k := keyOf(b); k != "" && len(groups[k]) > 1 {
 			for _, id := range groups[k] {
@@ -197,4 +176,47 @@ func (s *Server) handleEReaderOff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"updated": len(ids), "off": in.Off})
+}
+
+// authorBooks counts each author's books (folded names).
+func authorBooks(books []store.ReviewBook) map[string]int {
+	n := map[string]int{}
+	for _, b := range books {
+		for _, a := range b.Authors {
+			n[fold(a)]++
+		}
+	}
+	return n
+}
+
+// badFlags are what is wrong with a book's details, if anything: a junk
+// title, the author's name as the title (its own author's, or a two-word name
+// of someone with three books or more: title and author swapped), an
+// uploader's nickname as the author, no author.
+func badFlags(b store.ReviewBook, people map[string]int) []string {
+	var flags []string
+	t := strings.TrimSpace(b.Title)
+	if junkTitleRE.MatchString(t) {
+		flags = append(flags, "junk_title")
+	}
+	if ft := fold(t); ft != "" {
+		own := false
+		for _, a := range b.Authors {
+			own = own || fold(a) == ft
+		}
+		if own || (people[ft] >= 3 && len(strings.Fields(ft)) >= 2) {
+			flags = append(flags, "title_is_author")
+		}
+	}
+	uploader := len(b.Authors) > 0
+	for _, a := range b.Authors {
+		uploader = uploader && uploaderRE.MatchString(strings.TrimSpace(a))
+	}
+	if uploader {
+		flags = append(flags, "uploader_author")
+	}
+	if len(b.Authors) == 0 {
+		flags = append(flags, "no_author")
+	}
+	return flags
 }

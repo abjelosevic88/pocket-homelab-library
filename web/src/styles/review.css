@@ -14,3 +14,7 @@
 .review-flag.off { background: var(--accent-soft); color: var(--accent-ink); }
 .review-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 16px 0; }
 @media (max-width: 640px) { .review-act { display: none; } }
+.review-cleanup { padding: 14px 16px; margin-bottom: 16px; border-color: rgba(139, 92, 246, .35); }
+.review-moves { margin: 0 0 6px; padding-left: 18px; display: grid; gap: 4px; }
+.review-progress { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin-top: 6px; }
+.review-progress span { display: block; height: 100%; background: var(--accent); transition: width .4s; }

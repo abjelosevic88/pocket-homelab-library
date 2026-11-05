@@ -7,7 +7,7 @@ import { useApp } from '../lib/app-context'
 import { useApi } from '../lib/use'
 import type { Library, ReviewFlag, ReviewPage } from '../lib/types'
 import { Icon } from '../components/icons'
-import { Empty, Loading, PageHeader, Segmented, errMsg, useToast } from '../components/ui'
+import { Confirm, Empty, Loading, PageHeader, Segmented, errMsg, useToast } from '../components/ui'
 import { Select } from '../components/Select'
 import '../styles/review.css'
 
@@ -52,6 +52,7 @@ export default function Review() {
         Fix a book on its page (<b>Edit details</b>), delete it there, or keep it off e-readers: it stays in the library and the web reader, but no device's catalogue lists it.
         A device can also show only one library or shelf: Devices → the device → Edit.
       </p>
+      {user?.role === 'admin' && <Cleanup onDone={() => { reload(); libs.reload() }} />}
       <div className="chips review-flags">
         <button type="button" className={`chip ${flag === '' ? 'active' : ''}`} onClick={() => setFlag('')}>All</button>
         {(data?.flags || (Object.keys(FLAG) as ReviewFlag[])).map(f => (
@@ -107,5 +108,74 @@ export default function Review() {
         </div>
       )}
     </div>
+  )
+}
+
+interface CleanupMove { to_library_id: number; to: string; from: string; count: number; reasons: Record<string, number>; samples: string[] }
+interface CleanupRun { running: boolean; total: number; done: number; moved: number; errors: string[]; started_at?: string; finished_at?: string }
+interface CleanupInfo { plan?: { main: Library; review: Library; tech?: Library; rename_review_to?: string; moves: CleanupMove[]; protected: number }; run: CleanupRun; error?: string }
+const REASON: Record<string, string> = { duplicate: 'extra copies', junk_title: 'junk titles', title_is_author: 'title and author swapped', uploader_author: 'uploader as author', no_author: 'no author', looks_good: 'look fine', tech: 'programming and languages' }
+
+/** Suggested clean-up: what would move where, and Apply (admins). */
+function Cleanup({ onDone }: { onDone: () => void }) {
+  const { toast } = useToast()
+  const [info, setInfo] = useState<CleanupInfo | null>(null)
+  const [asking, setAsking] = useState(false)
+  const [open, setOpen] = useState(false)
+  const load = () => api.get<CleanupInfo>(`${V1}/review/cleanup`).then(setInfo).catch(() => {})
+  useEffect(() => { load() }, [])
+  const running = !!info?.run.running
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => {
+      api.get<CleanupInfo>(`${V1}/review/cleanup`).then(i => { setInfo(i); if (!i.run.running) { onDone(); toast(`Clean-up done: ${i.run.moved.toLocaleString()} books moved`) } }).catch(() => {})
+    }, 2000)
+    return () => clearInterval(t)
+  }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!info || info.error && !running) return info?.error ? <p className="muted small review-help">{info.error}</p> : null
+  const plan = info.plan
+  const total = plan?.moves.reduce((n, m) => n + m.count, 0) || 0
+  const run = info.run
+  if (!running && total === 0 && !run.finished_at) return null
+  const apply = async () => {
+    setAsking(false)
+    try { const r = await api.post<{ run: CleanupRun }>(`${V1}/review/cleanup`); setInfo(i => i && { ...i, run: r.run }) } catch (e) { toast(errMsg(e), 'err') }
+  }
+  return (
+    <section className="card review-cleanup">
+      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+        <Icon name="wand" size={16} />
+        <h3 className="grow" style={{ margin: 0 }}>Suggested clean-up</h3>
+        {!running && total > 0 && <button type="button" className="btn sm primary" onClick={() => setAsking(true)}>Apply</button>}
+      </div>
+      {running ? (
+        <div className="mt-sm">
+          <div className="small">Moving books… {run.done.toLocaleString()} of {run.total.toLocaleString()}</div>
+          <div className="review-progress"><span style={{ width: `${run.total ? Math.round(run.done / run.total * 100) : 0}%` }} /></div>
+        </div>
+      ) : (
+        <>
+          {total > 0 && plan && <>
+            <p className="small muted" style={{ margin: '6px 0 8px' }}>
+              {plan.main.name} keeps good books only; the rest go to {plan.rename_review_to ? `${plan.review.name} (renamed ${plan.rename_review_to})` : plan.review.name}. Books keep their reading history, highlights and links; files move on the disk.
+              {plan.protected > 0 && ` ${plan.protected} flagged books stay because someone is reading them.`}
+            </p>
+            <ul className="review-moves">
+              {plan.moves.map(m => (
+                <li key={m.to_library_id}>
+                  <b>{m.count.toLocaleString()}</b> from {m.from} → <b>{m.to}</b>
+                  <span className="muted small"> · {Object.entries(m.reasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n.toLocaleString()} ${REASON[k] || k}`).join(' · ')}</span>
+                  {open && <div className="xsmall muted">e.g. {m.samples.join('; ')}</div>}
+                </li>
+              ))}
+            </ul>
+            <button type="button" className="link-btn small" onClick={() => setOpen(o => !o)}>{open ? 'Hide examples' : 'Show examples'}</button>
+          </>}
+          {run.finished_at && <p className="small" style={{ margin: '8px 0 0' }}>Last clean-up: {run.moved.toLocaleString()} of {run.total.toLocaleString()} books moved{run.errors.length ? `, ${run.errors.length} failed (${run.errors.slice(0, 3).join('; ')})` : ''}.</p>}
+        </>
+      )}
+      {asking && plan && <Confirm title="Apply the clean-up?" confirmLabel={`Move ${total.toLocaleString()} books`} danger={false} onCancel={() => setAsking(false)} onConfirm={apply}
+        message={`${total.toLocaleString()} books move between libraries and their files move on the disk. Every move is logged (moves.jsonl in the data folder) so it can be put back.`} />}
+    </section>
   )
 }

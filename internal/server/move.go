@@ -7,6 +7,7 @@ package server
 // Every move is appended to DATA_DIR/moves.jsonl, enough to put it back.
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -63,7 +64,7 @@ func (s *Server) handleMoveBooks(w http.ResponseWriter, r *http.Request) {
 	moved, skipped := 0, 0
 	var errs []string
 	for _, id := range in.IDs {
-		if err := s.moveBook(r, id, to, in.Rename, libs); err != nil {
+		if err := s.moveBookCtx(r.Context(), id, to, in.Rename, libs); err != nil {
 			if errors.Is(err, errSameLibrary) {
 				skipped++
 				continue
@@ -81,8 +82,7 @@ func (s *Server) handleMoveBooks(w http.ResponseWriter, r *http.Request) {
 
 var errSameLibrary = errors.New("already there")
 
-func (s *Server) moveBook(r *http.Request, id int64, to *store.Library, rename bool, libs map[int64]*store.Library) error {
-	ctx := r.Context()
+func (s *Server) moveBookCtx(ctx context.Context, id int64, to *store.Library, rename bool, libs map[int64]*store.Library) error {
 	b, err := s.store.GetBookAny(ctx, id)
 	if err != nil {
 		return err
