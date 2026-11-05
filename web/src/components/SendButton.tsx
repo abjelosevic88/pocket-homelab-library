@@ -70,7 +70,7 @@ export function SendButton({ bookId, bookIds, fileId, className = 'btn lg', labe
                 </button>
               ))}
             </div>
-            <Link to="/devices" className="small" onClick={() => setAnchor(null)}><Icon name="settings" size={13} /> Manage devices</Link>
+            <Link to="/devices" className="menu-item send-manage" onClick={() => setAnchor(null)}><span className="menu-ico"><Icon name="settings" size={15} /></span>Manage devices</Link>
           </div>
         </Popover>
       )}

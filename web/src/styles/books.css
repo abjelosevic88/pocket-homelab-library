@@ -32,6 +32,8 @@
 .sb-sync { display: flex; align-items: center; gap: 8px; margin: 14px 4px 0; padding: 8px 10px; border-radius: 9px; background: var(--accent-soft); color: var(--text-2); font-size: 12.5px; }
 .dev-item { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 .menu-item:has(.dev-item) { height: auto; padding-top: 6px; padding-bottom: 6px; }
+.send-manage { color: var(--muted); text-decoration: none !important; border-top: 1px solid var(--border); border-radius: 0 0 6px 6px; padding-top: 10px; height: auto; padding-bottom: 4px; }
+.send-manage:hover { color: var(--text); }
 
 /* ---------- stats ---------- */
 .stats.refetching .stat-tiles, .stats.refetching .card { opacity: .55; transition: opacity .2s; }
