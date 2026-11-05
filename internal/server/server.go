@@ -49,6 +49,7 @@ type Server struct {
 	sync    *kosyncState // KOReader sync, OPDS, the KOReader plugin, CrossPoint (kosync.go)
 
 	translate *translateState // translations into Serbian with Pocket AI (translate.go)
+	sorting   *sortState      // Pocket AI sorting new books into libraries (sort.go)
 }
 
 // New creates a server.
@@ -61,6 +62,7 @@ func New(cfg *config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) *Se
 	s.reader = newReaderState()
 	s.sync = newKosyncState()
 	s.translate = newTranslateState()
+	s.sorting = newSortState()
 	return s
 }
 

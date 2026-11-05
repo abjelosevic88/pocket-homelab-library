@@ -83,7 +83,7 @@ export default function UploadBooks({ onUploaded }: { onUploaded?: (ids: number[
     }
     xhr.current = null
     setBusy(false)
-    if (ids.length) { toast(`${ids.length} ${ids.length === 1 ? 'book' : 'books'} added`); onUploaded?.(ids) }
+    if (ids.length) { toast(`${ids.length} ${ids.length === 1 ? 'book' : 'books'} added · Pocket AI suggests where ${ids.length === 1 ? 'it belongs' : 'they belong'} in Review → AI sorting`); onUploaded?.(ids) }
   }
   const cancel = () => { cancelled.current = true; xhr.current?.abort() }
   const pending = rows.filter(r => r.state === 'waiting' || r.state === 'failed').length

@@ -286,6 +286,7 @@ func (s *Server) handleUploadBooks(w http.ResponseWriter, r *http.Request) {
 		s.log.Info("book uploaded", "by", u.Email, "library", lib.Name, "path", dest)
 	}
 	ids := s.registerFiles(ctx, lib, landed)
+	s.queueSort(ctx, ids, "upload", u.ID)
 	if skip == nil {
 		skip = []skipped{}
 	}
@@ -412,6 +413,7 @@ func (s *Server) ingestOnce(ctx context.Context, quiet time.Duration) int {
 	}
 	ids := s.registerFiles(ctx, lib, landed)
 	s.scan.writeMu.Unlock()
+	s.queueSort(ctx, ids, "ingest", 0)
 	// empty folders left behind, deepest first
 	for i := len(dirs) - 1; i >= 0; i-- {
 		_ = os.Remove(dirs[i]) // only succeeds when empty

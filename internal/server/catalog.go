@@ -31,6 +31,7 @@ func (s *Server) routesCatalog(api chi.Router) {
 	api.Put("/books/{id}/state", s.handleBookState)
 	s.routesBookshelf(api)
 	s.routesReview(api)
+	s.routesSort(api)
 	api.Get("/books/{id}/reads", s.handleBookReads)
 	api.Get("/reads", s.handleReads)
 	api.Delete("/reads/{id}", s.handleDeleteRead)
