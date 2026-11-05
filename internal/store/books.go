@@ -812,8 +812,29 @@ func (s *Store) SetEReaderOff(ctx context.Context, ids []int64, off bool) error 
 	if off {
 		v = 1
 	}
-	_, err := s.DB.ExecContext(ctx, `UPDATE books SET ereader_off = ? WHERE id IN `+inInts(ids), v)
+	_, err := s.DB.ExecContext(ctx, `UPDATE books SET ereader_off = ?, ereader_set = 'manual' WHERE id IN `+inInts(ids), v)
 	return err
+}
+
+// ReconcileEReaderPDF keeps books whose only files are PDFs off e-readers,
+// and lets them back on when another format arrives, unless a person
+// decided either way. It returns how many went off and came back on.
+func (s *Store) ReconcileEReaderPDF(ctx context.Context) (off, on int64, err error) {
+	const onlyPDF = `EXISTS (SELECT 1 FROM files f WHERE f.book_id = books.id AND f.missing = 0)
+		AND NOT EXISTS (SELECT 1 FROM files f WHERE f.book_id = books.id AND f.missing = 0 AND f.format != 'pdf')`
+	res, err := s.DB.ExecContext(ctx, `UPDATE books SET ereader_off = 1, ereader_set = 'auto'
+		WHERE ereader_set = '' AND ereader_off = 0 AND kind = 'book' AND missing = 0 AND `+onlyPDF)
+	if err != nil {
+		return 0, 0, err
+	}
+	off, _ = res.RowsAffected()
+	res, err = s.DB.ExecContext(ctx, `UPDATE books SET ereader_off = 0, ereader_set = ''
+		WHERE ereader_set = 'auto' AND ereader_off = 1 AND NOT (`+onlyPDF+`)`)
+	if err != nil {
+		return off, 0, err
+	}
+	on, _ = res.RowsAffected()
+	return off, on, nil
 }
 
 // ListBooks returns one page of books for a query, and how many match.

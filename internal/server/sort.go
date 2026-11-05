@@ -58,6 +58,7 @@ func (s *Server) queueSort(ctx context.Context, ids []int64, source string, by i
 	if len(ids) == 0 {
 		return
 	}
+	s.reconcileEReader(ctx) // new books with only a PDF: off e-readers at once
 	main, review, tech := s.cleanupLibraries(ctx)
 	known := map[int64]bool{}
 	for _, l := range []*store.Library{main, review, tech} {

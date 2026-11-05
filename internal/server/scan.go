@@ -82,6 +82,19 @@ func (s *Server) startScan(ctx context.Context) {
 		go s.ingestWorker(ctx)
 	}
 	go s.sortWorker(ctx)
+	go s.reconcileEReader(ctx)
+}
+
+// reconcileEReader applies the PDF rule (store.ReconcileEReaderPDF): books
+// with only a PDF stay off e-readers until another format arrives.
+func (s *Server) reconcileEReader(ctx context.Context) {
+	off, on, err := s.store.ReconcileEReaderPDF(ctx)
+	switch {
+	case err != nil:
+		s.log.Warn("e-readers: PDF rule", "err", err)
+	case off+on > 0:
+		s.log.Info("e-readers: PDF rule", "kept_off", off, "back_on", on)
+	}
 }
 
 // scanning reports whether a library is being scanned right now.
@@ -203,6 +216,9 @@ func (s *Server) runScan(ctx context.Context, lib *store.Library, full bool) {
 		s.scan.status.Errors = append(s.scan.status.Errors, errText)
 	}
 	s.scan.mu.Unlock()
+	if res != nil {
+		s.reconcileEReader(ctx)
+	}
 	if res != nil && len(res.Added) > 0 {
 		s.notifyAdded(ctx, lib, res.Added)
 		s.queueSort(ctx, res.Added, "scan", 0)

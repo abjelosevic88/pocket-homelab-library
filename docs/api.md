@@ -20,7 +20,7 @@ libraries open to everyone plus the ones they were given.
 | `POST /books/{id}/bookshelf` · `PUT` `{bookshelf_id}` · `DELETE` | Pocket Bookshelf (Core link `books:write`): add the book there (linked, with its status and rating here), link it to a book already there, or unlink it (Bookshelf then leaves it alone) |
 | `GET /books/{id}/bookshelf/search?q=` | Books on the person's Bookshelf to link to |
 | `GET /review?flag=&library=&off=hide\|only&offset=&limit=` | Editors: books that look wrong (`junk_title`, `title_is_author`, `uploader_author`, `no_author`, `duplicate`, `no_cover`) with counts per flag |
-| `PUT /books/ereader` | Editors: `{ids, off}` keeps books off (or lets them back onto) e-readers' catalogues |
+| `PUT /books/ereader` | Editors: `{ids, off}` keeps books off (or lets them back onto) e-readers' catalogues; a person's choice is never overridden. Books with only a PDF are kept off automatically and come back when another format arrives |
 | `POST /books/move` | Admins: `{ids, library_id, rename}` moves books (files on disk, sidecars too) into another library; each book keeps its id. Logged to `DATA_DIR/moves.jsonl` |
 | `GET /review/cleanup` · `POST` | Admins: the suggested clean-up (bad books and extra copies out of "Books", good ones from "Unsorted"/"Review" in) and running it in the background |
 | `GET /review/imports?status=suggested\|pending\|done` | Editors: Pocket AI's suggestion for each new book (upload, ingest, scan): `books`, `tech` or `review`, with a reason |

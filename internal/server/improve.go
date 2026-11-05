@@ -310,8 +310,8 @@ func (s *Server) runImprove(p *improvePlan, tidy, pdfOff, askAI, fill bool, uid 
 	}
 	if pdfOff && len(p.ids.pdf) > 0 {
 		step("pdf_off", len(p.ids.pdf))
-		if err := s.store.SetEReaderOff(ctx, p.ids.pdf, true); err == nil {
-			result(fmt.Sprintf("Kept %d PDF-only books off e-readers", len(p.ids.pdf)))
+		if off, _, err := s.store.ReconcileEReaderPDF(ctx); err == nil {
+			result(fmt.Sprintf("Kept %d PDF-only books off e-readers", off))
 		}
 	}
 	if askAI && len(p.ids.ask) > 0 {
