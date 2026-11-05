@@ -9,7 +9,6 @@ package server
 import (
 	"net/http"
 	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -76,25 +75,21 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	people := authorBooks(books)
-	// the same title by the same author (by surname) in the same library
-	groups := map[string][]int64{}
-	keyOf := func(b store.ReviewBook) string {
-		t := fold(b.Title)
-		if t == "" || len(b.Authors) == 0 {
-			return ""
-		}
-		sn := []string{}
-		for _, a := range b.Authors {
-			if k := surnameKey(a); k != "" {
-				sn = append(sn, k)
-			}
-		}
-		sort.Strings(sn)
-		return strconv.FormatInt(b.LibraryID, 10) + "|" + t + "|" + strings.Join(sn, ",")
-	}
+	// copies of one book in the same library (duplicates.go)
+	dupesOf := map[int64][]int64{}
+	byLib := map[int64][]store.ReviewBook{}
 	for _, b := range books {
-		if k := keyOf(b); k != "" {
-			groups[k] = append(groups[k], b.ID)
+		byLib[b.LibraryID] = append(byLib[b.LibraryID], b)
+	}
+	for _, list := range byLib {
+		for _, g := range duplicateGroups(list) {
+			for _, x := range g {
+				for _, y := range g {
+					if x.ID != y.ID {
+						dupesOf[x.ID] = append(dupesOf[x.ID], y.ID)
+					}
+				}
+			}
 		}
 	}
 	q := r.URL.Query()
@@ -104,13 +99,8 @@ func (s *Server) handleReview(w http.ResponseWriter, r *http.Request) {
 	items := []reviewItem{}
 	for _, b := range books {
 		flags := badFlags(b, people)
-		var dupes []int64
-		if k := keyOf(b); k != "" && len(groups[k]) > 1 {
-			for _, id := range groups[k] {
-				if id != b.ID {
-					dupes = append(dupes, id)
-				}
-			}
+		dupes := dupesOf[b.ID]
+		if len(dupes) > 0 {
 			flags = append(flags, "duplicate")
 		}
 		if b.Cover == "" {

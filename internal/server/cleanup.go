@@ -89,22 +89,14 @@ func (s *Server) planCleanup(ctx context.Context) (*cleanupPlan, error) {
 			bad[b.ID] = f
 		}
 	}
-	// copies of one book: the same title by the same authors (surnames), across both libraries
-	groups := map[string][]store.ReviewBook{}
+	// copies of one book across both libraries (duplicates.go), books with bad details aside
+	good := []store.ReviewBook{}
 	for _, b := range books {
-		if bad[b.ID] != nil || len(b.Authors) == 0 || fold(b.Title) == "" {
-			continue
+		if bad[b.ID] == nil {
+			good = append(good, b)
 		}
-		sn := []string{}
-		for _, a := range b.Authors {
-			if k := surnameKey(a); k != "" {
-				sn = append(sn, k)
-			}
-		}
-		sort.Strings(sn)
-		k := fold(b.Title) + "|" + strings.Join(sn, ",")
-		groups[k] = append(groups[k], b)
 	}
+	groups := duplicateGroups(good)
 	score := func(b store.ReviewBook) int {
 		n := 0
 		if b.Used {

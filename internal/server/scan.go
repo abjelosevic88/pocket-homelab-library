@@ -83,6 +83,7 @@ func (s *Server) startScan(ctx context.Context) {
 	}
 	go s.sortWorker(ctx)
 	go s.reconcileEReader(ctx)
+	go s.coverHashWorker(ctx)
 }
 
 // reconcileEReader applies the PDF rule (store.ReconcileEReaderPDF): books
