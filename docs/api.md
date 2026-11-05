@@ -25,6 +25,7 @@ libraries open to everyone plus the ones they were given.
 | `GET /review/cleanup` · `POST` | Admins: the suggested clean-up (bad books and extra copies out of "Books", good ones from "Unsorted"/"Review" in) and running it in the background |
 | `GET /review/imports?status=suggested\|pending\|done` | Editors: Pocket AI's suggestion for each new book (upload, ingest, scan): `books`, `tech` or `review`, with a reason |
 | `POST /review/imports/apply` · `/keep` · `/ask` | `{ids}`: move them where suggested (admins), leave them, or ask Pocket AI about books (again) |
+| `GET /review/improve` · `POST {tidy, pdf_off, ask_ai, fill}` | Admins: improve "Books": tidy titles and authors (numbers, caps, "Author - Title", "Last, First"; fields locked), keep PDF-only books off e-readers, ask Pocket AI about doubtful ones, look up missing details |
 | `POST /books/bulk` | `{ids, status, favorite, hidden, add_tags, remove_tags, series, language, shelf_add, shelf_remove}` |
 | `GET /books/{id}/reads` · `GET /reads?from&to` · `DELETE /reads/{id}` | Finished (and given-up) reads |
 | `GET /authors` · `GET /authors/{id}` · `PUT /authors/{id}` | Authors (renaming to an existing name merges) |

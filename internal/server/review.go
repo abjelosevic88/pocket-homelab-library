@@ -24,13 +24,19 @@ func (s *Server) routesReview(api chi.Router) {
 	api.Post("/books/move", s.handleMoveBooks)
 	api.Get("/review/cleanup", s.handleCleanupPlan)
 	api.Post("/review/cleanup", s.handleCleanupRun)
+	api.Get("/review/improve", s.handleImprovePlan)
+	api.Post("/review/improve", s.handleImproveRun)
 }
 
 // Review flags, in the order the page shows them.
-var reviewFlags = []string{"junk_title", "title_is_author", "uploader_author", "no_author", "duplicate", "no_cover"}
+var reviewFlags = []string{"junk_title", "title_is_author", "uploader_author", "single_name_author", "no_author", "duplicate", "no_cover"}
 
 var (
-	junkTitleRE = regexp.MustCompile(`(?i)^\(|microsoft word|\.(docx?|pdf|rtf|txt|epub|mobi)\s*\)?$|^(untitled|unknown|bez naslova|nepoznato?)$|faksimil|\\[0-9]{3}|^[0-9]{6,}$`)
+	junkTitleRE = regexp.MustCompile(`(?i)^\(|microsoft word|\.(docx?|pdf|rtf|txt|epub|mobi|indd)\s*\)?$|^(untitled|unknown|bez naslova|nepoznato?)$|faksimil|\\[0-9]{3}|^[0-9]{6,}$|\bwww\.|https?://|\.(com|net|org)\b|\^|^[A-Z]{2}_[0-9]{6}|\.indd\b`)
+	// an author that is an uploader's account rather than a person: escape codes, an e-mail, "(Nataša)"
+	accountRE = regexp.MustCompile(`\\[0-9]{3}|@|^\(.*\)$|(?i)^(administrator|admin|korisnik|user|owner|unknown|nepoznat)$`)
+	// one capitalised word (Bojana, Sanja): often an uploader's first name, sometimes a real one-name author (Homer)
+	oneNameRE = regexp.MustCompile(`^\p{Lu}\p{Ll}{1,14}$`)
 	uploaderRE  = regexp.MustCompile(`^[a-z0-9._-]{1,24}$`)
 )
 
@@ -208,15 +214,35 @@ func badFlags(b store.ReviewBook, people map[string]int) []string {
 			flags = append(flags, "title_is_author")
 		}
 	}
-	uploader := len(b.Authors) > 0
+	uploader, oneName := len(b.Authors) > 0, len(b.Authors) > 0
 	for _, a := range b.Authors {
-		uploader = uploader && uploaderRE.MatchString(strings.TrimSpace(a))
+		a = strings.TrimSpace(a)
+		uploader = uploader && (uploaderRE.MatchString(a) || accountRE.MatchString(a))
+		oneName = oneName && oneNameRE.MatchString(a)
 	}
-	if uploader {
+	switch {
+	case uploader:
 		flags = append(flags, "uploader_author")
+	case oneName:
+		flags = append(flags, softFlag)
 	}
 	if len(b.Authors) == 0 {
 		flags = append(flags, "no_author")
 	}
 	return flags
+}
+
+// softFlag is worth a look (and a question to Pocket AI) but not reason
+// enough to move a book out of the main library on its own.
+const softFlag = "single_name_author"
+
+// hardFlags are badFlags without the soft one.
+func hardFlags(b store.ReviewBook, people map[string]int) []string {
+	var out []string
+	for _, f := range badFlags(b, people) {
+		if f != softFlag {
+			out = append(out, f)
+		}
+	}
+	return out
 }

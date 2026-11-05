@@ -229,6 +229,6 @@ export interface AIModels { models: { id: string; name: string; description?: st
 export interface BookshelfInfo { available: boolean; linked?: boolean; unlinked?: boolean; id?: number; title?: string; url?: string; rating?: number; status?: string; can_write?: boolean }
 export interface BookshelfHit { id: number; title: string; authors: string; status: string; rating: number }
 
-export type ReviewFlag = 'junk_title' | 'title_is_author' | 'uploader_author' | 'no_author' | 'duplicate' | 'no_cover'
+export type ReviewFlag = 'junk_title' | 'title_is_author' | 'uploader_author' | 'single_name_author' | 'no_author' | 'duplicate' | 'no_cover'
 export interface ReviewItem { id: number; library_id: number; library: string; title: string; authors: string[]; cover: string; ereader_off: boolean; file: string; flags: ReviewFlag[]; dupes?: number[] }
 export interface ReviewPage { flags: ReviewFlag[]; counts: Partial<Record<ReviewFlag, number>>; total: number; items: ReviewItem[] }

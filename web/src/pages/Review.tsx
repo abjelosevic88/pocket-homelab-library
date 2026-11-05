@@ -15,6 +15,7 @@ const FLAG: Record<ReviewFlag, { label: string; help: string }> = {
   junk_title: { label: 'Junk title', help: 'A file name, a printer job or a scan as the title' },
   title_is_author: { label: 'Title is a name', help: "The title is an author's name: title and author swapped" },
   uploader_author: { label: 'Uploader as author', help: "A nickname such as “mladen” or “t” instead of the author" },
+  single_name_author: { label: 'One-name author', help: 'Just a first name (Bojana, Sanja): often the uploader, sometimes a real one-name author' },
   no_author: { label: 'No author', help: 'Nobody is credited' },
   duplicate: { label: 'Duplicate', help: 'The same title by the same author twice in one library' },
   no_cover: { label: 'No cover', help: 'No cover image' },
@@ -70,6 +71,7 @@ function LooksWrong() {
         A device can also show only one library or shelf: Devices → the device → Edit.
       </p>
       {user?.role === 'admin' && <Cleanup onDone={() => { reload(); libs.reload() }} />}
+      {user?.role === 'admin' && <Improve onDone={() => reload()} />}
       <div className="chips review-flags">
         <button type="button" className={`chip ${flag === '' ? 'active' : ''}`} onClick={() => setFlag('')}>All</button>
         {(data?.flags || (Object.keys(FLAG) as ReviewFlag[])).map(f => (
@@ -283,5 +285,77 @@ function AISorting({ onChange }: { onChange: () => void }) {
         </div>
       )}
     </>
+  )
+}
+
+interface ImproveInfo {
+  plan?: { library: string; tidy: number; tidy_examples: { book_id: number; field: string; from: string; to: string }[]; pdf_off: number; ask_ai: number; ask_ai_examples: string[]; fill: number }
+  run: { running: boolean; step: string; done: number; total: number; result: string[]; finished_at?: string }; error?: string
+}
+const IMPROVE_STEP: Record<string, string> = { starting: 'Starting', tidy: 'Tidying details', pdf_off: 'Keeping PDF-only books off e-readers', ask_ai: 'Asking Pocket AI' }
+
+/** Improve the main library: tidy details, PDF-only off e-readers, ask Pocket AI, fill in details (admins). */
+function Improve({ onDone }: { onDone: () => void }) {
+  const { toast } = useToast()
+  const [info, setInfo] = useState<ImproveInfo | null>(null)
+  const [pick, setPick] = useState({ tidy: true, pdf_off: true, ask_ai: true, fill: true })
+  const [open, setOpen] = useState(false)
+  const [asking, setAsking] = useState(false)
+  const load = () => api.get<ImproveInfo>(`${V1}/review/improve`).then(setInfo).catch(() => {})
+  useEffect(() => { load() }, [])
+  const running = !!info?.run.running
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => api.get<ImproveInfo>(`${V1}/review/improve`).then(i => { setInfo(i); if (!i.run.running) { onDone(); toast('Done: ' + i.run.result.join(' · ')) } }).catch(() => {}), 1500)
+    return () => clearInterval(t)
+  }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!info) return null
+  if (info.error && !running) return null
+  const p = info.plan
+  const run = info.run
+  const rows: { k: keyof typeof pick; n: number; label: string; help: string }[] = p ? [
+    { k: 'tidy', n: p.tidy, label: 'Tidy titles and authors', help: '“1. Izabrana” → Izabrana (#1), ALL CAPS in normal case, “Author - Title” without the author, “Last, First” → First Last. Edited fields are locked.' },
+    { k: 'pdf_off', n: p.pdf_off, label: 'Keep PDF-only books off e-readers', help: 'They stay in the library and the web reader.' },
+    { k: 'ask_ai', n: p.ask_ai, label: 'Ask Pocket AI about doubtful books', help: 'One-name authors, junk titles… Answers appear under AI sorting.' },
+    { k: 'fill', n: p.fill, label: 'Look up missing details', help: 'Description and cover from Open Library and Google Books.' },
+  ] : []
+  const any = rows.some(r => r.n > 0 && pick[r.k])
+  const apply = async () => {
+    setAsking(false)
+    try { const r = await api.post<{ run: ImproveInfo['run'] }>(`${V1}/review/improve`, pick); setInfo(i => i && { ...i, run: r.run }) } catch (e) { toast(errMsg(e), 'err') }
+  }
+  return (
+    <section className="card review-cleanup">
+      <div className="row" style={{ gap: 10, alignItems: 'center' }}>
+        <Icon name="sparkles" size={16} />
+        <h3 className="grow" style={{ margin: 0 }}>Improve {p?.library || 'Books'}</h3>
+        {!running && any && <button type="button" className="btn sm primary" onClick={() => setAsking(true)}>Apply</button>}
+      </div>
+      {running ? (
+        <div className="mt-sm">
+          <div className="small">{IMPROVE_STEP[run.step] || run.step}{run.total ? ` · ${run.done.toLocaleString()} of ${run.total.toLocaleString()}` : '…'}</div>
+          <div className="review-progress"><span style={{ width: `${run.total ? Math.round(run.done / run.total * 100) : 10}%` }} /></div>
+        </div>
+      ) : <>
+        <ul className="review-moves improve-list">
+          {rows.map(r => (
+            <li key={r.k}>
+              <label className="row" style={{ gap: 8, alignItems: 'flex-start' }}>
+                <input type="checkbox" checked={pick[r.k] && r.n > 0} disabled={r.n === 0} onChange={e => setPick({ ...pick, [r.k]: e.target.checked })} />
+                <span><b>{r.label}</b> <span className="muted small">· {r.n.toLocaleString()} books</span><br /><span className="muted xsmall">{r.help}</span></span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {p && (p.tidy_examples.length > 0 || p.ask_ai_examples.length > 0) && <button type="button" className="link-btn small" onClick={() => setOpen(o => !o)}>{open ? 'Hide examples' : 'Show examples'}</button>}
+        {open && p && <div className="xsmall muted improve-ex">
+          {p.tidy_examples.map((c, i) => <div key={i}><Link to={`/book/${c.book_id}`}>#{c.book_id}</Link> {c.field}: “{c.from || '—'}” → “{c.to}”</div>)}
+          {p.ask_ai_examples.length > 0 && <div className="mt-sm">Ask Pocket AI, e.g. {p.ask_ai_examples.join('; ')}</div>}
+        </div>}
+        {run.finished_at && run.result.length > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Last run: {run.result.join(' · ')}.</p>}
+      </>}
+      {asking && <Confirm title={`Improve ${p?.library || 'Books'}?`} confirmLabel="Apply" danger={false} onCancel={() => setAsking(false)} onConfirm={apply}
+        message={rows.filter(r => r.n > 0 && pick[r.k]).map(r => `${r.label}: ${r.n.toLocaleString()}`).join(' · ')} />}
+    </section>
   )
 }

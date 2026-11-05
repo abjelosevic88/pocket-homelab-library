@@ -85,7 +85,7 @@ func (s *Server) planCleanup(ctx context.Context) (*cleanupPlan, error) {
 	people := authorBooks(books)
 	bad := map[int64][]string{}
 	for _, b := range books {
-		if f := badFlags(b, people); len(f) > 0 {
+		if f := hardFlags(b, people); len(f) > 0 {
 			bad[b.ID] = f
 		}
 	}
