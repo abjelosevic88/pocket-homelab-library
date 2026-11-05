@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Icon } from './icons'
 
 export interface SelectOption { value: string; label: string; hint?: string; group?: string; /** shown, not pickable */ disabled?: boolean }
@@ -27,7 +28,9 @@ export function Select({ value, onChange, options, placeholder = 'Choose…', on
   const [hl, setHl] = useState(0)
   const [busy, setBusy] = useState(false)
   const [up, setUp] = useState(false)
+  const [at, setAt] = useState<React.CSSProperties>({})
   const root = useRef<HTMLDivElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const search = useRef<HTMLInputElement>(null)
   const id = useId()
@@ -50,15 +53,25 @@ export function Select({ value, onChange, options, placeholder = 'Choose…', on
     if (!open) return
     setQ(''); setHl(Math.max(0, rows.findIndex(r => r.opt?.value === value)))
     const t = setTimeout(() => search.current?.focus(), 0)
-    const onDoc = (e: MouseEvent) => { if (root.current && !root.current.contains(e.target as Node)) setOpen(false) }
+    const onDoc = (e: MouseEvent) => { const t = e.target as Node; if (root.current && !root.current.contains(t) && !pop.current?.contains(t)) setOpen(false) }
     document.addEventListener('mousedown', onDoc)
     return () => { clearTimeout(t); document.removeEventListener('mousedown', onDoc) }
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setHl(0) }, [q])
+  // the list is drawn over the page (a portal, fixed under or over the field), so a dialog or a card can't cut it off
   useLayoutEffect(() => {
     if (!open || !root.current) return
-    const r = root.current.getBoundingClientRect()
-    setUp(window.innerHeight - r.bottom < 300 && r.top > 300)
+    const place = () => {
+      const r = root.current!.getBoundingClientRect()
+      const u = window.innerHeight - r.bottom < 300 && r.top > 300
+      setUp(u)
+      setAt({ position: 'fixed', left: Math.max(8, Math.min(r.left, window.innerWidth - Math.max(r.width, 200) - 8)), minWidth: r.width,
+        ...(u ? { top: 'auto', bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4, bottom: 'auto' }) })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
   }, [open])
   useEffect(() => {
     const el = list.current?.querySelector<HTMLElement>(`[data-i="${hl}"]`)
@@ -84,14 +97,14 @@ export function Select({ value, onChange, options, placeholder = 'Choose…', on
 
   let group = ''
   return (
-    <div ref={root} className={`sel ${className} ${open ? 'open' : ''}`} onKeyDown={open ? onKey : undefined}>
+    <div ref={root} className={`sel ${className} ${open ? 'open' : ''}`}>
       <button type="button" className={`sel-btn ${current ? '' : 'empty'}`} onClick={() => !disabled && setOpen(o => !o)} aria-haspopup="listbox" aria-expanded={open} aria-label={ariaLabel} aria-controls={id} disabled={disabled}
         onKeyDown={e => { if (!open && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setOpen(true) } }}>
         <span className="sel-val">{current ? current.label : placeholder}</span>
         <Chevron />
       </button>
-      {open && (
-        <div className={`sel-pop ${up ? 'up' : ''}`}>
+      {open && createPortal(
+        <div ref={pop} className={`sel-pop sel-float ${up ? 'up' : ''}`} style={at} onKeyDown={onKey}>
           <div className="sel-search"><Icon name="search" size={14} /><input ref={search} value={q} onChange={e => setQ(e.target.value)} placeholder="Type to filter…" aria-label="Filter options" autoComplete="off" /></div>
           <div className="sel-list" role="listbox" id={id} ref={list}>
             {rows.length === 0 && <div className="sel-empty muted">No matches</div>}
@@ -109,7 +122,8 @@ export function Select({ value, onChange, options, placeholder = 'Choose…', on
               )
             })}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
