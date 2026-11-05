@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, V1 } from '../lib/api'
 import { useApp } from '../lib/app-context'
 import { useApi } from '../lib/use'
-import type { Annotation, BookDetail, ReadStatus, ReadingSession, Translation, UserBook } from '../lib/types'
+import type { Annotation, BookDetail, BookshelfHit, BookshelfInfo, ReadStatus, ReadingSession, Translation, UserBook } from '../lib/types'
 import { READABLE, formatLabel, hm, identifierLink, pct, readingTime, seriesIndex, stateOf, todayISO } from '../lib/books'
 import { fmtBytes, fmtDate, fmtDateTime } from '../lib/format'
 import { Icon } from '../components/icons'
@@ -186,7 +186,7 @@ export default function BookPage() {
         <aside className="book-side">
           <Highlights bookId={b.id} count={b.annotations} />
           <History b={b} onChange={reload} />
-          {b.bookshelf && <BookshelfCard bs={b.bookshelf} />}
+          {b.bookshelf && <BookshelfCard bookId={b.id} title={b.title} bs={b.bookshelf} />}
           {b.kind === 'book' && <GetItCard bookId={b.id} />}
           <section className="card side-card">
             <h3>Details</h3>
@@ -324,20 +324,92 @@ function History({ b, onChange }: { b: BookDetail; onChange: () => void }) {
   )
 }
 
-function BookshelfCard({ bs }: { bs: NonNullable<BookDetail['bookshelf']> }) {
+const BS_STATUS: Record<string, string> = { want: 'want to read', reading: 'reading', read: 'read', abandoned: 'abandoned' }
+
+/** Pocket Bookshelf: the entry there, and adding, linking or unlinking this book. */
+function BookshelfCard({ bookId, title, bs: initial }: { bookId: number; title: string; bs: BookshelfInfo }) {
+  const { toast } = useToast()
+  const [bs, setBs] = useState(initial)
+  const [busy, setBusy] = useState(false)
+  const [picking, setPicking] = useState(false)
+  const [unlinking, setUnlinking] = useState(false)
+  useEffect(() => setBs(initial), [initial])
+  const path = `${V1}/books/${bookId}/bookshelf`
+  const act = async (fn: () => Promise<BookshelfInfo>, done: string) => {
+    setBusy(true)
+    try { setBs(await fn()); toast(done) } catch (e) { toast(errMsg(e), 'err') } finally { setBusy(false) }
+  }
+  const status = bs.status ? BS_STATUS[bs.status] || bs.status : ''
   return (
     <section className="card side-card bookshelf-card">
       <h3><Icon name="library" size={14} />Pocket Bookshelf</h3>
       {bs.available ? (
         <>
-          <p className="small" style={{ margin: '0 0 8px' }}>{bs.status ? `On your Bookshelf as “${bs.status}”` : 'On your Bookshelf'}{bs.rating ? '' : '.'}</p>
+          <p className="small" style={{ margin: '0 0 8px' }}>
+            {bs.linked ? (status ? `On your Bookshelf as “${status}”.` : 'On your Bookshelf.') : <>Probably on your Bookshelf as <b>{bs.title}</b>{status ? ` (“${status}”)` : ''}.</>}
+          </p>
           {bs.rating ? <Stars value={bs.rating} size={14} /> : null}
           {bs.url && <div className="mt-sm"><a className="small" href={bs.url} target="_blank" rel="noreferrer">Open in Pocket Bookshelf <Icon name="external" size={11} /></a></div>}
+          {bs.can_write && (
+            <div className="bs-actions">
+              {bs.linked
+                ? <button type="button" className="link-btn small" disabled={busy} onClick={() => setUnlinking(true)}>Not the same book? Unlink</button>
+                : <>
+                    <button type="button" className="btn sm" disabled={busy} onClick={() => act(() => api.put<BookshelfInfo>(path, { bookshelf_id: bs.id }), 'Linked')}>Yes, link them</button>
+                    <button type="button" className="link-btn small" disabled={busy} onClick={() => setPicking(true)}>Another book…</button>
+                  </>}
+            </div>
+          )}
         </>
       ) : (
-        <p className="small muted" style={{ margin: 0 }}>Not on your Bookshelf yet.{bs.url && <> <a href={bs.url} target="_blank" rel="noreferrer">Open Pocket Bookshelf</a></>}</p>
+        <>
+          <p className="small muted" style={{ margin: '0 0 8px' }}>
+            {bs.unlinked ? 'Unlinked: reading it here no longer updates your Bookshelf.' : 'Not on your Bookshelf yet.'}
+          </p>
+          {bs.can_write ? (
+            <div className="bs-actions">
+              {!bs.unlinked && <button type="button" className="btn sm" disabled={busy} onClick={() => act(() => api.post<BookshelfInfo>(path), 'Added to your Bookshelf')}>Add to Bookshelf</button>}
+              <button type="button" className="link-btn small" disabled={busy} onClick={() => setPicking(true)}>Link to a book there…</button>
+            </div>
+          ) : bs.url && <a className="small" href={bs.url} target="_blank" rel="noreferrer">Open Pocket Bookshelf</a>}
+        </>
       )}
+      {picking && <BookshelfPicker bookId={bookId} title={title} onClose={() => setPicking(false)}
+        onPick={h => { setPicking(false); act(() => api.put<BookshelfInfo>(path, { bookshelf_id: h.id }), `Linked to “${h.title}”`) }} />}
+      {unlinking && <Confirm title="Unlink from Pocket Bookshelf?" confirmLabel="Unlink" onCancel={() => setUnlinking(false)}
+        message="Reading this book here will no longer update that book on your Bookshelf, and it won't be added again. You can link it again any time."
+        onConfirm={() => { setUnlinking(false); act(() => api.del<BookshelfInfo>(path), 'Unlinked') }} />}
     </section>
+  )
+}
+
+function BookshelfPicker({ bookId, title, onClose, onPick }: { bookId: number; title: string; onClose: () => void; onPick: (h: BookshelfHit) => void }) {
+  const [q, setQ] = useState(title)
+  const [hits, setHits] = useState<BookshelfHit[] | null>(null)
+  const [err, setErr] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => {
+      api.get<BookshelfHit[]>(`${V1}/books/${bookId}/bookshelf/search?q=${encodeURIComponent(q)}`)
+        .then(h => { setHits(h); setErr('') }).catch(e => setErr(errMsg(e)))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [bookId, q])
+  return (
+    <Modal title="Link to a book on your Bookshelf" onClose={onClose} size="sm">
+      <label className="search-box"><Icon name="search" size={15} /><input value={q} onChange={e => setQ(e.target.value)} placeholder="Title or author" aria-label="Find on your Bookshelf" autoFocus /></label>
+      {err && <p className="small danger-text">{err}</p>}
+      {hits === null && !err && <Loading />}
+      {hits && hits.length === 0 && <p className="small muted">Nothing on your Bookshelf matches.</p>}
+      {hits && hits.length > 0 && (
+        <ul className="bs-hits">
+          {hits.map(h => (
+            <li key={h.id}><button type="button" onClick={() => onPick(h)}>
+              <b>{h.title}</b><span className="muted small">{[h.authors, BS_STATUS[h.status] || h.status].filter(Boolean).join(' · ')}</span>
+            </button></li>
+          ))}
+        </ul>
+      )}
+    </Modal>
   )
 }
 

@@ -87,7 +87,9 @@
 
 **With the other Pocket apps**
 - Sign in with Pocket Core; Pocket Bookshelf turns what you finish here into reads, the page you are on into
-  progress and your highlights into quotes; your rating there shows here; events (started, finished, highlighted, sent) for anything else.
+  progress and your highlights into quotes; each book here is linked to its entry there (add it, link it to another book
+  or unlink it from the book page), its status and rating there show here, and what you set here is written there;
+  events (started, finished, highlighted, sent) for anything else.
 - **Translate** English books into Serbian (Latin or Cyrillic) with Pocket AI: drop a file or pick a book, and
   the Serbian edition is filed into the library next to it. Translated paragraph by paragraph with the book's
   layout kept; replies are kept, so a stopped job carries on where it was. Needs the Core link

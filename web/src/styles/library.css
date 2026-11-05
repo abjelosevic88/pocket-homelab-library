@@ -157,6 +157,10 @@
 .ann-mini .note { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
 .bookshelf-card { border-color: rgba(139, 92, 246, .35); }
 .bookshelf-card h3 { display: flex; align-items: center; gap: 6px; }
+.bs-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 10px; }
+.bs-hits { list-style: none; margin: 12px 0 0; padding: 0; max-height: 50vh; overflow: auto; }
+.bs-hits button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: inherit; text-align: left; cursor: pointer; }
+.bs-hits button:hover, .bs-hits button:focus-visible { background: var(--hover); }
 .reads-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 .reads-list li { display: flex; align-items: center; gap: 8px; }
 .lock-btn { border: 0; background: none; padding: 2px; color: var(--faint); cursor: pointer; display: inline-grid; place-items: center; border-radius: 5px; }

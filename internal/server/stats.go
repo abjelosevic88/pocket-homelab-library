@@ -10,11 +10,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -521,112 +519,6 @@ func (s *Server) notifyFinished(ctx context.Context, u *store.User, b *store.Boo
 			s.log.Warn("notify finished", "err", err)
 		}
 	}()
-}
-
-// ---- Pocket Bookshelf (Core link books:read) ----
-
-type bsCacheEntry struct {
-	at  time.Time
-	val map[string]any
-}
-
-var (
-	bsMu    sync.Mutex
-	bsCache = map[string]bsCacheEntry{}
-)
-
-// bookshelfInfo is the person's own entry for this book in Pocket Bookshelf
-// (rating, status, a link), when Core links the two for them. nil when there
-// is no Core or the link is off; {available:false} when the book isn't there.
-func (s *Server) bookshelfInfo(ctx context.Context, u *store.User, b *store.Book) map[string]any {
-	if !s.coreConnected() {
-		return nil
-	}
-	key := fmt.Sprintf("%d:%d", u.ID, b.ID)
-	bsMu.Lock()
-	if e, ok := bsCache[key]; ok && time.Since(e.at) < 10*time.Minute {
-		bsMu.Unlock()
-		return e.val
-	}
-	bsMu.Unlock()
-	c, cancel := context.WithTimeout(ctx, 4*time.Second)
-	defer cancel()
-	val := s.lookupBookshelf(c, u, b)
-	bsMu.Lock()
-	if len(bsCache) > 5000 {
-		bsCache = map[string]bsCacheEntry{}
-	}
-	bsCache[key] = bsCacheEntry{at: time.Now(), val: val}
-	bsMu.Unlock()
-	return val
-}
-
-func (s *Server) lookupBookshelf(ctx context.Context, u *store.User, b *store.Book) map[string]any {
-	tok, err := s.core.ActAs(ctx, u.Email, "bookshelf", "books:read")
-	if err != nil || tok.URL == "" {
-		return nil
-	}
-	type bsBook struct {
-		ID      int64   `json:"id"`
-		Title   string  `json:"title"`
-		Authors string  `json:"authors"`
-		Status  string  `json:"status"`
-		Rating  float64 `json:"rating"`
-	}
-	get := func(q url.Values) []bsBook {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(tok.URL, "/")+"/api/v1/books?"+q.Encode(), nil)
-		if err != nil {
-			return nil
-		}
-		req.Header.Set("Authorization", "Bearer "+tok.AccessToken)
-		res, err := s.http.Do(req)
-		if err != nil {
-			return nil
-		}
-		defer res.Body.Close()
-		if res.StatusCode != http.StatusOK {
-			return nil
-		}
-		var raw json.RawMessage
-		if json.NewDecoder(res.Body).Decode(&raw) != nil {
-			return nil
-		}
-		var list []bsBook
-		if json.Unmarshal(raw, &list) == nil {
-			return list
-		}
-		var page struct {
-			Items []bsBook `json:"items"`
-			Books []bsBook `json:"books"`
-		}
-		if json.Unmarshal(raw, &page) == nil {
-			if page.Items != nil {
-				return page.Items
-			}
-			return page.Books
-		}
-		return nil
-	}
-	var hits []bsBook
-	if b.ISBN != "" {
-		hits = get(url.Values{"isbn": {b.ISBN}})
-	}
-	if len(hits) == 0 {
-		for _, h := range get(url.Values{"q": {b.Title}}) {
-			if strings.EqualFold(strings.TrimSpace(h.Title), strings.TrimSpace(b.Title)) {
-				hits = append(hits, h)
-			}
-		}
-	}
-	base := strings.TrimRight(tok.PublicURL, "/")
-	if base == "" {
-		base = strings.TrimRight(tok.URL, "/")
-	}
-	if len(hits) == 0 {
-		return map[string]any{"available": false, "url": base}
-	}
-	h := hits[0]
-	return map[string]any{"available": true, "url": fmt.Sprintf("%s/books/%d", base, h.ID), "rating": int(h.Rating*2 + 0.5), "status": h.Status}
 }
 
 // ---- export / import of one person's own data ----

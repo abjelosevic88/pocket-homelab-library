@@ -29,6 +29,7 @@ func (s *Server) routesCatalog(api chi.Router) {
 	api.Get("/books/{id}", s.handleBook)
 	api.Put("/books/{id}", s.handleEditBook)
 	api.Put("/books/{id}/state", s.handleBookState)
+	s.routesBookshelf(api)
 	api.Get("/books/{id}/reads", s.handleBookReads)
 	api.Get("/reads", s.handleReads)
 	api.Delete("/reads/{id}", s.handleDeleteRead)
@@ -473,6 +474,7 @@ func (s *Server) handleBookState(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "state")
 		return
 	}
+	s.mirrorState(u, b, in.Status != nil, ub, in.Rating, in.Day)
 	writeJSON(w, http.StatusOK, ub)
 }
 

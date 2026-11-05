@@ -91,7 +91,7 @@ export interface BookDetail extends Book {
   annotations: number // count
   readable: boolean // the web reader can open one of its files
   sendable: boolean // there is a format some device takes
-  bookshelf?: { available: boolean; url?: string; rating?: number; status?: string } // Pocket Bookshelf via Core
+  bookshelf?: BookshelfInfo // Pocket Bookshelf via Core
 }
 
 /** GET /books?… — BookQuery as query parameters (also a smart shelf's filter). */
@@ -224,3 +224,7 @@ export interface Translation {
 }
 export interface TranslateStatus { ready: boolean; detail: string; core: boolean; convert: boolean; parallel: number }
 export interface AIModels { models: { id: string; name: string; description?: string }[]; default_model: string; default_name: string }
+
+/** The person's entry for a book in Pocket Bookshelf. linked: Bookshelf keeps it as this book (else a guess by ISBN or title); unlinked: they unlinked it. */
+export interface BookshelfInfo { available: boolean; linked?: boolean; unlinked?: boolean; id?: number; title?: string; url?: string; rating?: number; status?: string; can_write?: boolean }
+export interface BookshelfHit { id: number; title: string; authors: string; status: string; rating: number }

@@ -16,7 +16,9 @@ libraries open to everyone plus the ones they were given.
 | `GET /books?q&library&author&series&tag&format&language&publisher&status&favorite&rating_min&kind&added_since&missing&sort&order&offset&limit&seed` | A page of books: `{items, total, offset, limit}`. `status` = `want`, `reading`, `read`, `dnf`, `unread`; `sort` = `title`, `author`, `added`, `published`, `series`, `rating`, `last_read`, `random`, `pages` |
 | `GET /books/{id}` | A book with its files, series, more by the author, reads, shelves and, with Pocket Core, your Pocket Bookshelf rating |
 | `PUT /books/{id}` | Edit metadata (editors). Every field sent is locked, so scans keep it; send `locked` to set the list |
-| `PUT /books/{id}/state` | `{status, rating (1–10 half stars), favorite, hidden, day}`; finishing records a read on `day` |
+| `PUT /books/{id}/state` | `{status, rating (1–10 half stars), favorite, hidden, day}`; finishing records a read on `day`. With Pocket Core, a status or rating set here is also written to the person's Pocket Bookshelf |
+| `POST /books/{id}/bookshelf` · `PUT` `{bookshelf_id}` · `DELETE` | Pocket Bookshelf (Core link `books:write`): add the book there (linked, with its status and rating here), link it to a book already there, or unlink it (Bookshelf then leaves it alone) |
+| `GET /books/{id}/bookshelf/search?q=` | Books on the person's Bookshelf to link to |
 | `POST /books/bulk` | `{ids, status, favorite, hidden, add_tags, remove_tags, series, language, shelf_add, shelf_remove}` |
 | `GET /books/{id}/reads` · `GET /reads?from&to` · `DELETE /reads/{id}` | Finished (and given-up) reads |
 | `GET /authors` · `GET /authors/{id}` · `PUT /authors/{id}` | Authors (renaming to an existing name merges) |

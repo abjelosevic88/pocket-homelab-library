@@ -17,8 +17,9 @@ import (
 // for them with a pcx_ token, only within these scopes. Every route not
 // listed in linkRoutes stays closed to it (403).
 //
-// As the actor: Library reads the person's Pocket Bookshelf (their rating and
-// status of a book, shown on the book page) and has Pocket AI translate books.
+// As the actor: Library reads and writes the person's Pocket Bookshelf (their
+// rating and status of a book, and which book there is this one; bookshelf.go)
+// and has Pocket AI translate books.
 
 var linkOffers = []core.Offer{
 	{Scope: "reading:read", Name: "See what you read", Description: "Read what you read in your library (where you are in each book, books you finished, reading time per day, highlights and notes), for your reading log, journal and dashboards."},
@@ -26,7 +27,7 @@ var linkOffers = []core.Offer{
 }
 
 var linkUses = []core.Use{
-	{App: "bookshelf", Scopes: []string{"books:read"}, Reason: "Show your rating and reading status from Pocket Bookshelf on each book's page"},
+	{App: "bookshelf", Scopes: []string{"books:read", "books:write"}, Reason: "Show your rating and reading status from Pocket Bookshelf on each book's page, write the status and rating you set here there, and add or link a book to the same one on your shelves"},
 	core.InferenceUse(), // Translate: books into Serbian with your Pocket AI
 	requestsUse,         // Get it: the audiobook, another language, more by the author
 }
