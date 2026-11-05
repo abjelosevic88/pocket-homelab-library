@@ -21,6 +21,7 @@ import (
 func (s *Server) routesReview(api chi.Router) {
 	api.Get("/review", s.handleReview)
 	api.Put("/books/ereader", s.handleEReaderOff)
+	api.Post("/books/move", s.handleMoveBooks)
 }
 
 // Review flags, in the order the page shows them.

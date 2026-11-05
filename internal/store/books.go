@@ -1203,3 +1203,23 @@ func (s *Store) Facets(ctx context.Context, libraries []int64) (map[string][]Tag
 	}
 	return out, nil
 }
+
+// RelocateBook records that a book's files moved into another library: each
+// file's new path, the book's library and its group key. The book keeps its
+// id, so the reading state, highlights, sync and links stay with it.
+func (s *Store) RelocateBook(ctx context.Context, bookID, libraryID int64, groupKey string, paths map[int64]string) error {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback() //nolint:errcheck
+	for fileID, p := range paths {
+		if _, err := tx.ExecContext(ctx, `UPDATE files SET path = ?, library_id = ? WHERE id = ? AND book_id = ?`, p, libraryID, fileID, bookID); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE books SET library_id = ?, group_key = ?, updated_at = ? WHERE id = ?`, libraryID, groupKey, Now(), bookID); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
