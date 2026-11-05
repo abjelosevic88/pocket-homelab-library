@@ -74,7 +74,7 @@ func (s *Server) planCleanup(ctx context.Context) (*cleanupPlan, error) {
 	if main == nil || review == nil {
 		return nil, fmt.Errorf("the clean-up needs a library named “Books” and one named “Review” or “Unsorted”")
 	}
-	plan := &cleanupPlan{Main: main, Review: review, Tech: tech}
+	plan := &cleanupPlan{Main: main, Review: review, Tech: tech, Moves: []*cleanupMove{}}
 	if strings.EqualFold(review.Name, "unsorted") {
 		plan.RenameTo = "Review"
 	}
@@ -137,11 +137,11 @@ func (s *Server) planCleanup(ctx context.Context) (*cleanupPlan, error) {
 			extra[b.ID] = true
 		}
 	}
-	toReview := &cleanupMove{To: review.ID, ToName: plan.renamedReview(), From: main.Name, Reasons: map[string]int{}}
-	toMain := &cleanupMove{To: main.ID, ToName: main.Name, From: review.Name, Rename: true, Reasons: map[string]int{}}
+	toReview := &cleanupMove{To: review.ID, ToName: plan.renamedReview(), From: main.Name, Reasons: map[string]int{}, Samples: []string{}}
+	toMain := &cleanupMove{To: main.ID, ToName: main.Name, From: review.Name, Rename: true, Reasons: map[string]int{}, Samples: []string{}}
 	var toTech *cleanupMove
 	if tech != nil {
-		toTech = &cleanupMove{To: tech.ID, ToName: tech.Name, From: review.Name, Rename: true, Reasons: map[string]int{}}
+		toTech = &cleanupMove{To: tech.ID, ToName: tech.Name, From: review.Name, Rename: true, Reasons: map[string]int{}, Samples: []string{}}
 	}
 	add := func(m *cleanupMove, b store.ReviewBook, why string) {
 		m.IDs = append(m.IDs, b.ID)
@@ -197,7 +197,7 @@ type cleanupState struct {
 
 var (
 	cleanupMu  sync.Mutex
-	cleanupNow cleanupState
+	cleanupNow = cleanupState{Errors: []string{}}
 )
 
 // GET /review/cleanup — the plan and the last run. Admins.

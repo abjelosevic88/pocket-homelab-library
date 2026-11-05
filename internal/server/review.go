@@ -36,8 +36,8 @@ var (
 	// an author that is an uploader's account rather than a person: escape codes, an e-mail, "(Nataša)"
 	accountRE = regexp.MustCompile(`\\[0-9]{3}|@|^\(.*\)$|(?i)^(administrator|admin|korisnik|user|owner|unknown|nepoznat)$`)
 	// one capitalised word (Bojana, Sanja): often an uploader's first name, sometimes a real one-name author (Homer)
-	oneNameRE = regexp.MustCompile(`^\p{Lu}\p{Ll}{1,14}$`)
-	uploaderRE  = regexp.MustCompile(`^[a-z0-9._-]{1,24}$`)
+	oneNameRE  = regexp.MustCompile(`^\p{Lu}\p{Ll}{1,14}$`)
+	uploaderRE = regexp.MustCompile(`^[a-z0-9._-]{1,24}$`)
 )
 
 // surnameKey is an author's last word, folded: "Dž. D. Selindžer" → "selindzer".

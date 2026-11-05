@@ -154,7 +154,7 @@ function Cleanup({ onDone }: { onDone: () => void }) {
   }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!info || info.error && !running) return info?.error ? <p className="muted small review-help">{info.error}</p> : null
   const plan = info.plan
-  const total = plan?.moves.reduce((n, m) => n + m.count, 0) || 0
+  const total = (plan?.moves || []).reduce((n, m) => n + m.count, 0)
   const run = info.run
   if (!running && total === 0 && !run.finished_at) return null
   const apply = async () => {
@@ -181,17 +181,17 @@ function Cleanup({ onDone }: { onDone: () => void }) {
               {plan.protected > 0 && ` ${plan.protected} flagged books stay because someone is reading them.`}
             </p>
             <ul className="review-moves">
-              {plan.moves.map(m => (
+              {(plan.moves || []).map(m => (
                 <li key={m.to_library_id}>
                   <b>{m.count.toLocaleString()}</b> from {m.from} → <b>{m.to}</b>
-                  <span className="muted small"> · {Object.entries(m.reasons).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n.toLocaleString()} ${REASON[k] || k}`).join(' · ')}</span>
-                  {open && <div className="xsmall muted">e.g. {m.samples.join('; ')}</div>}
+                  <span className="muted small"> · {Object.entries(m.reasons || {}).sort((a, b) => b[1] - a[1]).map(([k, n]) => `${n.toLocaleString()} ${REASON[k] || k}`).join(' · ')}</span>
+                  {open && <div className="xsmall muted">e.g. {(m.samples || []).join('; ')}</div>}
                 </li>
               ))}
             </ul>
             <button type="button" className="link-btn small" onClick={() => setOpen(o => !o)}>{open ? 'Hide examples' : 'Show examples'}</button>
           </>}
-          {run.finished_at && <p className="small" style={{ margin: '8px 0 0' }}>Last clean-up: {run.moved.toLocaleString()} of {run.total.toLocaleString()} books moved{run.errors.length ? `, ${run.errors.length} failed (${run.errors.slice(0, 3).join('; ')})` : ''}.</p>}
+          {run.finished_at && <p className="small" style={{ margin: '8px 0 0' }}>Last clean-up: {run.moved.toLocaleString()} of {run.total.toLocaleString()} books moved{run.errors?.length ? `, ${run.errors.length} failed (${run.errors.slice(0, 3).join('; ')})` : ''}.</p>}
         </>
       )}
       {asking && plan && <Confirm title="Apply the clean-up?" confirmLabel={`Move ${total.toLocaleString()} books`} danger={false} onCancel={() => setAsking(false)} onConfirm={apply}
@@ -306,7 +306,7 @@ function Improve({ onDone }: { onDone: () => void }) {
   const running = !!info?.run.running
   useEffect(() => {
     if (!running) return
-    const t = setInterval(() => api.get<ImproveInfo>(`${V1}/review/improve`).then(i => { setInfo(i); if (!i.run.running) { onDone(); toast('Done: ' + i.run.result.join(' · ')) } }).catch(() => {}), 1500)
+    const t = setInterval(() => api.get<ImproveInfo>(`${V1}/review/improve`).then(i => { setInfo(i); if (!i.run.running) { onDone(); toast('Done: ' + (i.run.result || []).join(' · ')) } }).catch(() => {}), 1500)
     return () => clearInterval(t)
   }, [running]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!info) return null
@@ -347,12 +347,12 @@ function Improve({ onDone }: { onDone: () => void }) {
             </li>
           ))}
         </ul>
-        {p && (p.tidy_examples.length > 0 || p.ask_ai_examples.length > 0) && <button type="button" className="link-btn small" onClick={() => setOpen(o => !o)}>{open ? 'Hide examples' : 'Show examples'}</button>}
+        {p && ((p.tidy_examples || []).length > 0 || (p.ask_ai_examples || []).length > 0) && <button type="button" className="link-btn small" onClick={() => setOpen(o => !o)}>{open ? 'Hide examples' : 'Show examples'}</button>}
         {open && p && <div className="xsmall muted improve-ex">
-          {p.tidy_examples.map((c, i) => <div key={i}><Link to={`/book/${c.book_id}`}>#{c.book_id}</Link> {c.field}: “{c.from || '—'}” → “{c.to}”</div>)}
-          {p.ask_ai_examples.length > 0 && <div className="mt-sm">Ask Pocket AI, e.g. {p.ask_ai_examples.join('; ')}</div>}
+          {(p.tidy_examples || []).map((c, i) => <div key={i}><Link to={`/book/${c.book_id}`}>#{c.book_id}</Link> {c.field}: “{c.from || '—'}” → “{c.to}”</div>)}
+          {(p.ask_ai_examples || []).length > 0 && <div className="mt-sm">Ask Pocket AI, e.g. {p.ask_ai_examples.join('; ')}</div>}
         </div>}
-        {run.finished_at && run.result.length > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Last run: {run.result.join(' · ')}.</p>}
+        {run.finished_at && (run.result || []).length > 0 && <p className="small" style={{ margin: '8px 0 0' }}>Last run: {run.result.join(' · ')}.</p>}
       </>}
       {asking && <Confirm title={`Improve ${p?.library || 'Books'}?`} confirmLabel="Apply" danger={false} onCancel={() => setAsking(false)} onConfirm={apply}
         message={rows.filter(r => r.n > 0 && pick[r.k]).map(r => `${r.label}: ${r.n.toLocaleString()}`).join(' · ')} />}

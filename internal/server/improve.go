@@ -161,7 +161,7 @@ func (s *Server) planImprove(ctx context.Context) (*improvePlan, error) {
 	if main == nil {
 		return nil, fmt.Errorf("there is no library named “Books”")
 	}
-	p := &improvePlan{Library: main.Name, main: main}
+	p := &improvePlan{Library: main.Name, main: main, TidyEx: []tidyChange{}, AskEx: []string{}}
 	books, err := s.store.ReviewBooks(ctx, []int64{main.ID})
 	if err != nil {
 		return nil, err
@@ -211,7 +211,7 @@ type improveState struct {
 
 var (
 	improveMu  sync.Mutex
-	improveNow improveState
+	improveNow = improveState{Result: []string{}}
 )
 
 // GET /review/improve — Admins.

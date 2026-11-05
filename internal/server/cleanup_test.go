@@ -2,8 +2,10 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
@@ -94,5 +96,13 @@ func TestCleanupPlanAndRun(t *testing.T) {
 	}
 	if cleanupNow.Running || cleanupNow.Moved != 5 || len(cleanupNow.Errors) != 0 {
 		t.Fatalf("run: %+v", cleanupNow)
+	}
+	// nothing left to do: an empty list, never null (the page reads it)
+	again, err := f.srv.planCleanup(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if j, _ := json.Marshal(again); !strings.Contains(string(j), `"moves":[]`) {
+		t.Fatalf("empty plan: %s", j)
 	}
 }
