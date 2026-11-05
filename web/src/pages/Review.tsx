@@ -8,6 +8,7 @@ import { useApi } from '../lib/use'
 import type { Library, ReviewFlag, ReviewPage } from '../lib/types'
 import { Icon } from '../components/icons'
 import { Empty, Loading, PageHeader, Segmented, errMsg, useToast } from '../components/ui'
+import { Select } from '../components/Select'
 import '../styles/review.css'
 
 const FLAG: Record<ReviewFlag, { label: string; help: string }> = {
@@ -60,10 +61,10 @@ export default function Review() {
         ))}
       </div>
       <div className="review-bar">
-        <select value={lib} onChange={e => setLib(Number(e.target.value))} aria-label="Library">
-          <option value={0}>Every library</option>
-          {(libs.data || []).filter(l => l.kind === 'books').map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-        </select>
+        <div className="review-lib"><Select ariaLabel="Library" value={String(lib)} onChange={v => setLib(Number(v) || 0)} options={[
+          { value: '0', label: 'Every library' },
+          ...(libs.data || []).filter(l => l.kind === 'books').map(l => ({ value: String(l.id), label: l.name })),
+        ]} /></div>
         <Segmented size="sm" value={off} onChange={setOff} label="Kept off e-readers" options={[{ value: 'hide', label: 'To do' }, { value: 'only', label: 'Kept off' }, { value: 'all', label: 'All' }]} />
         <span className="grow" />
         {picked.size > 0 && <>

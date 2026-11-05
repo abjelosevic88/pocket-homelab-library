@@ -9,6 +9,7 @@ import { ago, fmtBytes, fmtDateTime } from '../lib/format'
 import { Confirm, Empty, Field, Loading, MenuButton, Modal, PageHeader, Spinner, Switch, errMsg, useAsync, useToast } from '../components/ui'
 import { Icon } from '../components/icons'
 import { DevIcon, DeviceSetup, KIND_LABEL } from '../components/DeviceSetup'
+import { Select } from '../components/Select'
 import { MiniCover } from '../components/DevCover'
 import '../styles/admin.css'
 
@@ -249,11 +250,11 @@ function EditDevice({ device, onClose, onSaved }: { device: Device; onClose: () 
           <div className="row" style={{ gap: 10 }}><Switch checked={f.push && !!f.address.trim()} disabled={!f.address.trim()} onChange={v => setF({ ...f, push: v })} label="Push straight to the X4" /><span className="small">Push books straight to the X4 when it's reachable</span></div>
         </>}
         {reader && <Field label="Its catalogue shows" help="What this device's catalogue (OPDS) lists: search, authors, series and “recently added” included. Books kept off e-readers (Review) never show.">
-          <select value={f.catalog} onChange={e => setF({ ...f, catalog: e.target.value })}>
-            <option value="">Everything you can open</option>
-            {libs.length > 0 && <optgroup label="One library">{libs.map(l => <option key={l.id} value={`library:${l.id}`}>{l.name}</option>)}</optgroup>}
-            {shelves.length > 0 && <optgroup label="One shelf">{shelves.map(sh => <option key={sh.id} value={`shelf:${sh.id}`}>{sh.name}{sh.kind === 'smart' ? ' (smart)' : ''}</option>)}</optgroup>}
-          </select>
+          <Select ariaLabel="Its catalogue shows" value={f.catalog} onChange={v => setF({ ...f, catalog: v })} options={[
+            { value: '', label: 'Everything you can open' },
+            ...libs.map(l => ({ value: `library:${l.id}`, label: l.name, group: 'One library' })),
+            ...shelves.map(sh => ({ value: `shelf:${sh.id}`, label: sh.name, hint: sh.kind === 'smart' ? 'smart' : undefined, group: 'One shelf' })),
+          ]} />
         </Field>}
         <div className="form-actions"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy}>Save</button></div>
       </form>
