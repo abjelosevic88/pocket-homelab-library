@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/abjelosevic88/pocket-homelab-library/internal/epub"
+	"github.com/abjelosevic88/pocket-homelab-library/internal/formats"
 	"github.com/abjelosevic88/pocket-homelab-library/internal/mail/mailtest"
 	"github.com/abjelosevic88/pocket-homelab-library/internal/store"
 )
@@ -369,6 +370,16 @@ func TestDownload(t *testing.T) {
 	oz, err := zip.NewReader(bytes.NewReader(orig), int64(len(orig)))
 	if err != nil || !strings.Contains(zipText(t, oz, "OEBPS/content.opf"), "Old title") {
 		t.Fatal("original changed")
+	}
+	// a reader syncing the copy it got (another document hash than the original) is matched back to the file
+	got := filepath.Join(f.dir, "got.epub")
+	os.WriteFile(got, body, 0o644)
+	hash, _ := formats.PartialMD5(got)
+	if hash == b.Files[0].PartialMD5 {
+		t.Fatal("the prepared copy has the original's hash")
+	}
+	if files, err := f.st.FilesByHash(context.Background(), hash); err != nil || len(files) != 1 || files[0].ID != f.file {
+		t.Fatalf("served copy not matched: %v %v", files, err)
 	}
 	// ranges
 	req, _ := http.NewRequest("GET", f.srv.URL+"/api/v1/files/"+itoa(f.file)+"/download", nil)

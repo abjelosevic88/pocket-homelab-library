@@ -167,6 +167,20 @@ func (s *Server) converter() *convert.Converter {
 // the original, a conversion, or an EPUB with the catalogue's metadata
 // (box setting) and, for Kindles, Amazon's fixes. Results are cached.
 func (s *Server) prepareFile(ctx context.Context, b *store.Book, f *store.File, format string, kindleFix bool) (string, error) {
+	p, err := s.prepareFileAs(ctx, b, f, format, kindleFix)
+	if err == nil && p != f.Path {
+		// a copy that is not the file itself: remember its document hash, so a
+		// reader syncing its place in it is matched back to this file
+		if h, herr := formats.PartialMD5(p); herr == nil && h != f.PartialMD5 {
+			if err := s.store.RememberServedHash(ctx, h, f.ID); err != nil {
+				s.log.Warn("served hash", "file", f.ID, "err", err)
+			}
+		}
+	}
+	return p, err
+}
+
+func (s *Server) prepareFileAs(ctx context.Context, b *store.Book, f *store.File, format string, kindleFix bool) (string, error) {
 	if _, err := os.Stat(f.Path); err != nil {
 		return "", err
 	}

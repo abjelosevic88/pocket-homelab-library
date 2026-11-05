@@ -462,7 +462,16 @@ func (s *Store) FilesInLibrary(ctx context.Context, libraryID int64) (map[string
 // the contents or the MD5 of the file name.
 func (s *Store) FilesByHash(ctx context.Context, hash string) ([]File, error) {
 	hash = strings.ToLower(hash)
-	return s.listFiles(ctx, `WHERE (partial_md5 = ? OR name_md5 = ?) AND missing = 0 ORDER BY partial_md5 = ? DESC, id`, hash, hash, hash)
+	return s.listFiles(ctx, `WHERE (partial_md5 = ? OR name_md5 = ? OR id IN (SELECT file_id FROM served_hashes WHERE hash = ?)) AND missing = 0
+		ORDER BY partial_md5 = ? DESC, id`, hash, hash, hash, hash)
+}
+
+// RememberServedHash records the document hash of a copy of a file that was
+// handed out (prepared or converted), so a reader syncing it is matched.
+func (s *Store) RememberServedHash(ctx context.Context, hash string, fileID int64) error {
+	_, err := s.DB.ExecContext(ctx, `INSERT INTO served_hashes (hash, file_id, created_at) VALUES (?, ?, ?)
+		ON CONFLICT(hash) DO UPDATE SET file_id = excluded.file_id`, strings.ToLower(hash), fileID, Now())
+	return err
 }
 
 // FilesWithoutHash returns files that still need their whole-file hash.
