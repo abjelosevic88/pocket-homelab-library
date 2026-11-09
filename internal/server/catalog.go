@@ -178,6 +178,12 @@ func (s *Server) libraryInput(w http.ResponseWriter, r *http.Request, l *store.L
 		writeErr(w, http.StatusBadRequest, "a library needs at least one folder")
 		return false
 	}
+	for _, path := range l.Paths {
+		if overlappingPaths(path, s.importRoot()) {
+			writeErr(w, http.StatusBadRequest, "this folder is reserved for personal book imports")
+			return false
+		}
+	}
 	return true
 }
 
@@ -208,6 +214,10 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err, "library")
 		return
 	}
+	if cur.OwnerUserID != 0 {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
 	l := *cur
 	if !s.libraryInput(w, r, &l) {
 		return
@@ -226,6 +236,11 @@ func (s *Server) handleUpdateLibrary(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleDeleteLibrary(w http.ResponseWriter, r *http.Request) {
 	if !s.requireAdmin(w, r) {
+		return
+	}
+	lib, err := s.store.GetLibrary(r.Context(), idParam(r, "id"))
+	if err != nil || lib.OwnerUserID != 0 {
+		writeErr(w, http.StatusNotFound, "not found")
 		return
 	}
 	if err := s.store.DeleteLibrary(r.Context(), idParam(r, "id")); err != nil {
@@ -304,6 +319,9 @@ func (s *Server) bookDetail(ctx context.Context, u *store.User, b *store.Book) m
 	}
 	if lib, err := s.store.GetLibrary(ctx, b.LibraryID); err == nil {
 		m["library"] = map[string]any{"id": lib.ID, "name": lib.Name, "kind": lib.Kind}
+	}
+	if provenance, err := s.store.BookImportProvenance(ctx, u.ID, b.ID); err == nil {
+		m["provenance"] = provenance
 	}
 	seriesBooks := []store.Book{}
 	if b.SeriesID > 0 {
@@ -673,6 +691,10 @@ func (s *Server) handleEditAuthor(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	id := idParam(r, "id")
+	if other, err := s.store.OtherPrivateAuthor(ctx, id, actorID(ctx)); err != nil || other {
+		writeErr(w, http.StatusNotFound, "author not found")
+		return
+	}
 	libs := s.allowedLibraries(ctx, userFrom(ctx))
 	a, err := s.store.GetAuthor(ctx, id, libs)
 	if err != nil {
@@ -750,6 +772,10 @@ func (s *Server) handleEditSeries(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	u := userFrom(ctx)
+	if other, err := s.store.OtherPrivateSeries(ctx, idParam(r, "id"), u.ID); err != nil || other {
+		writeErr(w, http.StatusNotFound, "series not found")
+		return
+	}
 	libs := s.allowedLibraries(ctx, u)
 	se, err := s.store.GetSeries(ctx, u.ID, idParam(r, "id"), libs)
 	if err != nil {

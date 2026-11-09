@@ -31,7 +31,7 @@ func (s *Store) CountFilesWithoutHash(ctx context.Context) int {
 // CountAuthorsToEnrich counts authors not looked up yet.
 func (s *Store) CountAuthorsToEnrich(ctx context.Context) int {
 	var n int
-	_ = s.DB.QueryRowContext(ctx, `SELECT COUNT(1) FROM authors WHERE enriched_at = ''`).Scan(&n)
+	_ = s.DB.QueryRowContext(ctx, `SELECT COUNT(1) FROM authors WHERE enriched_at = '' AND id IN (SELECT ba.author_id FROM book_authors ba JOIN books b ON b.id=ba.book_id JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL)`).Scan(&n)
 	return n
 }
 
@@ -57,7 +57,7 @@ func (s *Store) AuthorName(ctx context.Context, id int64) (string, error) {
 // BooksMissingMeta returns books (present on disk) without a description or
 // a cover, optionally in one library, oldest first.
 func (s *Store) BooksMissingMeta(ctx context.Context, libraryID int64, limit int) ([]int64, error) {
-	q := `SELECT id FROM books WHERE missing = 0 AND (description = '' OR cover = '')`
+	q := `SELECT id FROM books WHERE library_id IN (SELECT id FROM libraries WHERE owner_user_id IS NULL) AND missing = 0 AND (description = '' OR cover = '')`
 	args := []any{}
 	if libraryID > 0 {
 		q += ` AND library_id = ?`

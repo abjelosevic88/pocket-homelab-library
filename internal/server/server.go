@@ -26,14 +26,15 @@ var Version = "dev"
 // Server holds dependencies. Each area keeps its own state in its own struct
 // (scan.go, devices.go, reader.go, kosync.go), so they stay apart.
 type Server struct {
-	cfg      *config.Config
-	store    *store.Store
-	log      *slog.Logger
-	webFS    fs.FS
-	started  time.Time
-	requests atomic.Int64
-	errors   atomic.Int64
-	http     *http.Client // outbound lookups (metadata, Core links)
+	cfg         *config.Config
+	store       *store.Store
+	log         *slog.Logger
+	webFS       fs.FS
+	started     time.Time
+	requests    atomic.Int64
+	errors      atomic.Int64
+	http        *http.Client  // outbound lookups (metadata, Core links)
+	bookImports chan struct{} // at most two bounded linked ebook uploads
 
 	oidcMu sync.Mutex
 	oidc   *oidcProvider // for the issuer in use; rebuilt when it changes
@@ -55,8 +56,9 @@ type Server struct {
 // New creates a server.
 func New(cfg *config.Config, st *store.Store, log *slog.Logger, webFS fs.FS) *Server {
 	s := &Server{cfg: cfg, store: st, log: log, webFS: webFS, started: time.Now(), oidc: &oidcProvider{},
-		http: &http.Client{Timeout: 30 * time.Second},
-		core: core.New(cfg.CoreURL, core.Options{DB: st.DB, TokenFile: cfg.DataDir + "/core.token", UserAgent: cfg.UserAgent})}
+		bookImports: make(chan struct{}, 2),
+		http:        &http.Client{Timeout: 30 * time.Second},
+		core:        core.New(cfg.CoreURL, core.Options{DB: st.DB, TokenFile: cfg.DataDir + "/core.token", UserAgent: cfg.UserAgent})}
 	s.scan = newScanState()
 	s.devices = newDeviceState()
 	s.reader = newReaderState()

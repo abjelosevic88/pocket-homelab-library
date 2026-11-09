@@ -7,6 +7,7 @@ Everything the app itself keeps is in `DATA_DIR` (`/data` in the container):
 |---|---|
 | `pocket-library.db` (+ `-wal`, `-shm`) | The catalogue (rebuilt by a scan) and what only lives here: each person's place, reads, ratings, reading time, highlights, shelves, devices, sends, settings, accounts, metadata edited by hand |
 | `covers/` | Covers and author photos. Covers from files are made again by a scan; covers you uploaded or picked online are not, so keep this folder |
+| `linked-book-imports/` | Private ebook files imported from Pocket Books. Back up with the database, which holds owner permissions, collection membership and source provenance |
 | `cache/` | Converted files, prepared EPUBs, extracted comic pages. Safe to delete, never back up |
 | `secret.key` | Seals the mail password and the Google Books key. Lose it and you type them again; nothing else is lost |
 | `core.token`, `core.token.oidc.json` | The app's Pocket Core registration (made again by registering) |

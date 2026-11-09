@@ -54,7 +54,7 @@ func (s *Server) cleanupLibraries(ctx context.Context) (main, review, tech *stor
 	}
 	for i := range libs {
 		l := &libs[i]
-		if l.Kind != "books" || len(l.Paths) == 0 {
+		if l.OwnerUserID != 0 || l.Kind != "books" || len(l.Paths) == 0 {
 			continue
 		}
 		switch n := strings.ToLower(strings.TrimSpace(l.Name)); {

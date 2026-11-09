@@ -135,6 +135,7 @@ export default function BookPage() {
             {b.language && <span><Icon name="globe" size={13} />{langName(b.language)}</span>}
             {b.formats.map(f => <span key={f} className="fmt">{f}</span>)}
           </p>
+          {b.provenance?.source_app === 'books' && <p className="small muted">Imported from Pocket Books · <a className="link" href={b.provenance.source_url} target="_blank" rel="noopener noreferrer">Original forum post</a></p>}
           <div className="book-rating">
             <Stars value={s.rating} onChange={v => setState({ rating: v }, v ? `Rated ${v / 2} ★` : 'Rating cleared')} size={22} />
             {s.rating > 0 && <span className="muted">{s.rating / 2} / 5</span>}

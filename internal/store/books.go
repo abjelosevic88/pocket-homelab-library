@@ -128,7 +128,11 @@ func (m *BookMeta) clean() {
 // CreateBook inserts a book in a library with its metadata and returns its id.
 func (s *Store) CreateBook(ctx context.Context, libraryID int64, groupKey string, m BookMeta) (int64, error) {
 	m.clean()
-	m.Tags = s.applyTagRules(ctx, m.Tags)
+	if lib, err := s.GetLibrary(ctx, libraryID); err != nil {
+		return 0, err
+	} else if lib.OwnerUserID == 0 {
+		m.Tags = s.applyTagRules(ctx, m.Tags)
+	}
 	ids, _ := json.Marshal(m.Identifiers)
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -162,7 +166,13 @@ func (s *Store) CreateBook(ctx context.Context, libraryID int64, groupKey string
 // SaveBookMeta overwrites a book's metadata (callers decide what locked fields keep).
 func (s *Store) SaveBookMeta(ctx context.Context, id int64, m BookMeta) error {
 	m.clean()
-	m.Tags = s.applyTagRules(ctx, m.Tags)
+	var owner int64
+	if err := s.DB.QueryRowContext(ctx, `SELECT COALESCE(l.owner_user_id,0) FROM books b JOIN libraries l ON l.id=b.library_id WHERE b.id=?`, id).Scan(&owner); err != nil {
+		return notFound(err)
+	}
+	if owner == 0 {
+		m.Tags = s.applyTagRules(ctx, m.Tags)
+	}
 	ids, _ := json.Marshal(m.Identifiers)
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -1018,6 +1028,9 @@ func (s *Store) GetAuthor(ctx context.Context, id int64, libraries []int64) (*Au
 	if err != nil {
 		return nil, notFound(err)
 	}
+	if a.Books == 0 {
+		return nil, ErrNotFound
+	}
 	_ = json.Unmarshal([]byte(links), &a.Links)
 	if a.Photo != "" {
 		a.Photo = fmt.Sprintf("/api/v1/authors/%d/photo?v=%s", a.ID, strings.TrimSuffix(a.Photo, filepath.Ext(a.Photo)))
@@ -1068,7 +1081,7 @@ func (s *Store) RenameAuthor(ctx context.Context, id int64, name string) error {
 
 // AuthorsToEnrich returns authors not looked up yet.
 func (s *Store) AuthorsToEnrich(ctx context.Context, limit int) ([]Author, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT id, name FROM authors WHERE enriched_at = '' ORDER BY id LIMIT ?`, limit)
+	rows, err := s.DB.QueryContext(ctx, `SELECT id, name FROM authors WHERE enriched_at = '' AND id IN (SELECT ba.author_id FROM book_authors ba JOIN books b ON b.id=ba.book_id JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) ORDER BY id LIMIT ?`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1154,6 +1167,9 @@ func (s *Store) GetSeries(ctx context.Context, uid, id int64, libraries []int64)
 	}
 	inLib := `b.missing = 0 AND b.library_id IN ` + inInts(libraries)
 	_ = s.DB.QueryRowContext(ctx, `SELECT COUNT(1), COALESCE(SUM(CASE WHEN ub.status = 'read' THEN 1 ELSE 0 END), 0) FROM books b LEFT JOIN user_books ub ON ub.book_id = b.id AND ub.user_id = ? WHERE b.series_id = ? AND `+inLib, uid, id).Scan(&se.Books, &se.Read)
+	if se.Books == 0 {
+		return nil, ErrNotFound
+	}
 	se.Covers = s.seriesCovers(ctx, id, libraries)
 	return &se, nil
 }

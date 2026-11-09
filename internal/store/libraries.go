@@ -53,8 +53,12 @@ func (s *Store) CreateLibrary(ctx context.Context, l *Library) error {
 			return err
 		}
 	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO libraries (name, kind, paths, access, uploads, upload_template, scan_every, position) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		l.Name, l.Kind, string(paths), l.Access, boolInt(l.Uploads), l.UploadTemplate, l.ScanEvery, l.Position)
+	var owner any
+	if l.OwnerUserID > 0 {
+		owner = l.OwnerUserID
+	}
+	res, err := tx.ExecContext(ctx, `INSERT INTO libraries (name, kind, paths, access, uploads, upload_template, scan_every, position, owner_user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		l.Name, l.Kind, string(paths), l.Access, boolInt(l.Uploads), l.UploadTemplate, l.ScanEvery, l.Position, owner)
 	if err != nil {
 		return conflict(err)
 	}
@@ -126,14 +130,14 @@ func (s *Store) DeleteLibrary(ctx context.Context, id int64) error {
 	return nil
 }
 
-const libCols = `id, name, kind, paths, access, uploads, upload_template, scan_every, position, last_scan_at, last_scan_ms, last_scan_error, created_at,
+const libCols = `id, name, kind, paths, access, uploads, upload_template, scan_every, position, last_scan_at, last_scan_ms, last_scan_error, created_at, COALESCE(owner_user_id, 0),
 	(SELECT COUNT(1) FROM books b WHERE b.library_id = libraries.id AND b.missing = 0)`
 
 func scanLibrary(row interface{ Scan(...any) error }) (*Library, error) {
 	var l Library
 	var paths string
 	if err := row.Scan(&l.ID, &l.Name, &l.Kind, &paths, &l.Access, &l.Uploads, &l.UploadTemplate, &l.ScanEvery, &l.Position,
-		&l.LastScanAt, &l.LastScanMS, &l.LastScanError, &l.CreatedAt, &l.Books); err != nil {
+		&l.LastScanAt, &l.LastScanMS, &l.LastScanError, &l.CreatedAt, &l.OwnerUserID, &l.Books); err != nil {
 		return nil, notFound(err)
 	}
 	_ = json.Unmarshal([]byte(paths), &l.Paths)
@@ -192,11 +196,18 @@ func (s *Store) LibrariesFor(ctx context.Context, u *User) ([]Library, error) {
 	if err != nil {
 		return nil, err
 	}
-	if u != nil && u.Role == "admin" {
-		return all, nil
-	}
 	var out []Library
 	for _, l := range all {
+		if l.OwnerUserID != 0 {
+			if u != nil && l.OwnerUserID == u.ID {
+				out = append(out, l)
+			}
+			continue
+		}
+		if u != nil && u.Role == "admin" {
+			out = append(out, l)
+			continue
+		}
 		if l.Access == "all" {
 			out = append(out, l)
 			continue
@@ -227,7 +238,7 @@ func (s *Store) LibraryIDsFor(ctx context.Context, u *User) ([]int64, error) {
 // UploadLibrary returns the library uploads are filed into (the first one when none is marked).
 func (s *Store) UploadLibrary(ctx context.Context) (*Library, error) {
 	var id int64
-	if err := s.DB.QueryRowContext(ctx, `SELECT id FROM libraries ORDER BY uploads DESC, position, id LIMIT 1`).Scan(&id); err != nil {
+	if err := s.DB.QueryRowContext(ctx, `SELECT id FROM libraries WHERE owner_user_id IS NULL ORDER BY uploads DESC, position, id LIMIT 1`).Scan(&id); err != nil {
 		return nil, notFound(err)
 	}
 	return s.GetLibrary(ctx, id)

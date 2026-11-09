@@ -92,6 +92,7 @@ export interface BookDetail extends Book {
   readable: boolean // the web reader can open one of its files
   sendable: boolean // there is a format some device takes
   bookshelf?: BookshelfInfo // Pocket Bookshelf via Core
+  provenance?: { source_app: string; source_url: string; original_name: string; imported_at: string; sha256: string }
 }
 
 /** GET /books?… — BookQuery as query parameters (also a smart shelf's filter). */

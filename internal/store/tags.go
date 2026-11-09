@@ -104,7 +104,7 @@ func (s *Store) booksWithTags(ctx context.Context, names []string) ([]int64, err
 	if len(names) == 0 {
 		return nil, nil
 	}
-	q := `SELECT DISTINCT book_id FROM book_tags WHERE tag IN (?` + strings.Repeat(",?", len(names)-1) + `)`
+	q := `SELECT DISTINCT book_id FROM book_tags WHERE book_id IN (SELECT b.id FROM books b JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) AND tag IN (?` + strings.Repeat(",?", len(names)-1) + `)`
 	args := make([]any, len(names))
 	for i, n := range names {
 		args[i] = n
@@ -133,7 +133,7 @@ func (s *Store) RemoveTags(ctx context.Context, names []string) (int, error) {
 		return 0, err
 	}
 	for _, n := range names {
-		if _, err := s.DB.ExecContext(ctx, `DELETE FROM book_tags WHERE tag = ?`, n); err != nil {
+		if _, err := s.DB.ExecContext(ctx, `DELETE FROM book_tags WHERE book_id IN (SELECT b.id FROM books b JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) AND tag = ?`, n); err != nil {
 			return 0, err
 		}
 	}
@@ -174,15 +174,15 @@ func (s *Store) MergeTags(ctx context.Context, names []string, into string) (int
 		if n == into {
 			continue
 		}
-		if _, err := s.DB.ExecContext(ctx, `INSERT OR IGNORE INTO book_tags (book_id, tag) SELECT book_id, ? FROM book_tags WHERE tag = ?`, into, n); err != nil {
+		if _, err := s.DB.ExecContext(ctx, `INSERT OR IGNORE INTO book_tags (book_id, tag) SELECT book_id, ? FROM book_tags WHERE book_id IN (SELECT b.id FROM books b JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) AND tag = ?`, into, n); err != nil {
 			return 0, err
 		}
-		if _, err := s.DB.ExecContext(ctx, `DELETE FROM book_tags WHERE tag = ? AND tag <> ?`, n, into); err != nil {
+		if _, err := s.DB.ExecContext(ctx, `DELETE FROM book_tags WHERE book_id IN (SELECT b.id FROM books b JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) AND tag = ? AND tag <> ?`, n, into); err != nil {
 			return 0, err
 		}
 	}
 	// a case-only rename: the row above was ignored as the same tag (NOCASE); set the spelling
-	if _, err := s.DB.ExecContext(ctx, `UPDATE book_tags SET tag = ? WHERE tag = ?`, into, into); err != nil {
+	if _, err := s.DB.ExecContext(ctx, `UPDATE book_tags SET tag = ? WHERE book_id IN (SELECT b.id FROM books b JOIN libraries l ON l.id=b.library_id WHERE l.owner_user_id IS NULL) AND tag = ?`, into, into); err != nil {
 		return 0, err
 	}
 	for _, id := range ids {

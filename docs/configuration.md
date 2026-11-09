@@ -49,6 +49,13 @@ Integration values seed the owner's (first admin's) own settings on first start,
 The book folders are read; they are only written to by uploads, the ingest folder and "delete with files". Mount
 them read-only if you want none of that.
 
+Pocket Books imports use the server-managed `DATA_DIR/linked-book-imports/<local-user-id>/` folder,
+with private directories and files. They require a person-authorized Core `library:import` link and
+create a private **Balkan Downloads** collection. Do not configure a shared library at this path, its
+parent, or a symlink alias: overlapping paths are rejected. Existing shared folders that overlap it
+must be corrected before the first import. Imports are limited to 100 MiB per file, or the configured
+`MAX_BOOK_UPLOAD_BYTES` when lower. Keep this tree in backups alongside the database; it contains ebook bytes.
+
 ## Mail (Send to Kindle)
 
 Amazon accepts books mailed from an address on your **Approved Personal Document E-mail List** (Amazon → Manage your

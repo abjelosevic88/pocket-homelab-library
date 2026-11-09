@@ -54,6 +54,10 @@ func (s *Server) handleMoveBooks(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "no such library, or it has no folder")
 		return
 	}
+	if to.OwnerUserID != 0 {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
 	if s.scanning(0) {
 		writeErr(w, http.StatusConflict, "a scan is running; move books when it is done")
 		return
@@ -63,7 +67,12 @@ func (s *Server) handleMoveBooks(w http.ResponseWriter, r *http.Request) {
 	libs := map[int64]*store.Library{}
 	moved, skipped := 0, 0
 	var errs []string
+	allowed := s.allowedLibraries(ctx, userFrom(ctx))
 	for _, id := range in.IDs {
+		if _, err := s.store.GetBook(ctx, actorID(ctx), id, allowed); err != nil {
+			errs = append(errs, fmt.Sprintf("#%d: not found", id))
+			continue
+		}
 		if err := s.moveBookCtx(r.Context(), id, to, in.Rename, libs); err != nil {
 			if errors.Is(err, errSameLibrary) {
 				skipped++
@@ -96,6 +105,9 @@ func (s *Server) moveBookCtx(ctx context.Context, id int64, to *store.Library, r
 			return err
 		}
 		libs[b.LibraryID] = from
+	}
+	if from.OwnerUserID != 0 || to.OwnerUserID != 0 {
+		return errors.New("personal imported books cannot be moved into shared libraries")
 	}
 	files := []store.File{}
 	for _, f := range b.Files {

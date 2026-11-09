@@ -22,6 +22,7 @@ import (
 // and has Pocket AI translate books.
 
 var linkOffers = []core.Offer{
+	{Scope: "library:import", Name: "Import books into your library", Description: "Let Pocket Books add ebook files to your private Balkan Downloads collection, with their original forum source. Other apps and people cannot use this import."},
 	{Scope: "reading:read", Name: "See what you read", Description: "Read what you read in your library (where you are in each book, books you finished, reading time per day, highlights and notes), for your reading log, journal and dashboards."},
 	{Scope: "library:read", Name: "Look through your library", Description: "Search the books you can open in Pocket Library and see their covers and details, e.g. to show that you own a book as an ebook."},
 }
@@ -39,6 +40,7 @@ type linkRoute struct {
 }
 
 var linkRoutes = []linkRoute{
+	{"POST", regexp.MustCompile(`^/api/v1/imports/balkan-books$`), "library:import"},
 	{"GET", regexp.MustCompile(`^/api/v1/auth/me$`), ""},
 	{"GET", regexp.MustCompile(`^/api/v1/(reading/feed|reading/current|stats|dashboard)$`), "reading:read"},
 	{"GET", regexp.MustCompile(`^/api/v1/(sessions|reads|annotations)$`), "reading:read"},
@@ -77,6 +79,9 @@ func (s *Server) linkUser(ctx context.Context, tok string, r *http.Request) (*st
 	}
 	if !in.Active || !in.Delegated() || in.User == nil || in.User.Email == "" || in.App == nil || in.App.Slug == "" {
 		return nil, "", http.ErrNoCookie
+	}
+	if r.URL.Path == "/api/v1/imports/balkan-books" && (in.Audience != "library" || in.App.Slug != "books") {
+		return nil, "", errLinkScope
 	}
 	if !linkAllows(strings.Fields(in.Scope), r) {
 		return nil, "", errLinkScope

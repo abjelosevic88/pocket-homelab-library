@@ -138,6 +138,9 @@ func (s *Server) scanWorker(ctx context.Context) {
 				continue
 			}
 			for i := range libs {
+				if libs[i].OwnerUserID != 0 && req.libraryID == 0 {
+					continue // personal imports are registered by their owner-scoped endpoint
+				}
 				if req.libraryID == 0 || libs[i].ID == req.libraryID {
 					s.runScan(ctx, &libs[i], req.full)
 				}
@@ -160,6 +163,9 @@ func (s *Server) scanScheduler(ctx context.Context) {
 		libs, err := s.store.ListLibraries(ctx)
 		if err == nil {
 			for _, l := range libs {
+				if l.OwnerUserID != 0 {
+					continue
+				}
 				if len(l.Paths) == 0 {
 					continue
 				}
@@ -322,6 +328,7 @@ func (s *Server) routesScan(api chi.Router) {
 }
 
 func (s *Server) rawScan(raw chi.Router) {
+	raw.Post("/imports/balkan-books", s.handleBalkanBookImport)
 	raw.Post("/upload", s.handleUploadBooks)
 	raw.Get("/books/{id}/cover", s.handleCover)
 	raw.Head("/books/{id}/cover", s.handleCover)
@@ -341,6 +348,11 @@ func (s *Server) handleScanStatus(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.fail(w, err, "libraries")
 		return
+	}
+	if st.LibraryID != 0 {
+		if lib, err := s.store.GetLibrary(ctx, st.LibraryID); err == nil && lib.OwnerUserID != 0 && lib.OwnerUserID != actorID(ctx) {
+			st = ScanStatus{Errors: []string{}}
+		}
 	}
 	type libState struct {
 		ID            int64  `json:"id"`
@@ -378,6 +390,10 @@ func (s *Server) handleScanLibrary(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.store.GetLibrary(r.Context(), idParam(r, "id"))
 	if err != nil {
 		s.fail(w, err, "library")
+		return
+	}
+	if lib.OwnerUserID != 0 && lib.OwnerUserID != actorID(r.Context()) {
+		writeErr(w, http.StatusNotFound, "not found")
 		return
 	}
 	s.requestScan(lib.ID, queryBool(r, "full"))

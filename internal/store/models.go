@@ -28,6 +28,7 @@ type APIToken struct {
 // Library is a set of folders of one kind.
 type Library struct {
 	ID             int64    `json:"id"`
+	OwnerUserID    int64    `json:"-"` // nonzero: personal imported files, never shared
 	Name           string   `json:"name"`
 	Kind           string   `json:"kind"` // books | comics | manga
 	Paths          []string `json:"paths"`

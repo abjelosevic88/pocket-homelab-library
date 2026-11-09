@@ -66,6 +66,10 @@ func (s *Server) mayOpenLibrary(ctx context.Context, libraryID int64) bool {
 }
 
 func (s *Server) handleAuthorPhoto(w http.ResponseWriter, r *http.Request) {
+	if _, err := s.store.GetAuthor(r.Context(), idParam(r, "id"), s.allowedLibraries(r.Context(), userFrom(r.Context()))); err != nil {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
 	name, err := s.store.AuthorPhotoFile(r.Context(), idParam(r, "id"))
 	if err != nil || name == "" {
 		writeErr(w, http.StatusNotFound, "not found")
@@ -365,6 +369,13 @@ func (s *Server) handleFetchMissing(w http.ResponseWriter, r *http.Request) {
 		Limit     int   `json:"limit"`
 	}
 	_ = decode(r, &in)
+	if in.LibraryID > 0 {
+		lib, err := s.store.GetLibrary(r.Context(), in.LibraryID)
+		if err != nil || lib.OwnerUserID != 0 {
+			writeErr(w, http.StatusNotFound, "library not found")
+			return
+		}
+	}
 	if in.Limit <= 0 || in.Limit > 5000 {
 		in.Limit = 500
 	}
@@ -485,12 +496,16 @@ func (s *Server) handleEnrichAuthor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id := idParam(r, "id")
-	name, err := s.store.AuthorName(r.Context(), id)
+	if other, err := s.store.OtherPrivateAuthor(r.Context(), id, actorID(r.Context())); err != nil || other {
+		writeErr(w, http.StatusNotFound, "author not found")
+		return
+	}
+	author, err := s.store.GetAuthor(r.Context(), id, s.allowedLibraries(r.Context(), userFrom(r.Context())))
 	if err != nil {
 		s.fail(w, err, "author")
 		return
 	}
-	if err := s.enrichAuthor(r.Context(), id, name); err != nil {
+	if err := s.enrichAuthor(r.Context(), id, author.Name); err != nil {
 		writeErr(w, http.StatusBadGateway, err.Error())
 		return
 	}

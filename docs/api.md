@@ -7,6 +7,8 @@ work too when the app is connected to Core. Shapes are in `web/src/lib/types.ts`
 Everything a person does (status, place, reads, reading time, highlights, shelves, devices, sends) is theirs
 alone: another person's ids answer 404, admins included. Books are shared through libraries: a person sees the
 libraries open to everyone plus the ones they were given.
+Books imported from Pocket Books belong to a private library: only their owner can open them, including
+when another person is an administrator. Their collection and original forum source are also personal.
 
 ## Catalogue
 
@@ -82,6 +84,44 @@ libraries open to everyone plus the ones they were given.
 | `POST /import/kindle-clippings` | `My Clippings.txt` → highlights (everyone) |
 | `GET /export.json` · `POST /import` | Your own reading as JSON |
 
+### Pocket Books ebook import
+
+`POST /api/v1/imports/balkan-books` accepts a person-authorized Pocket Core delegated token with
+audience `library`, acting app `books`, and the new `library:import` scope. Ordinary login tokens and
+the existing metadata/read scopes cannot call it. This scope grants no generic upload or catalogue editing.
+
+Send multipart fields `file` (exactly one), `title` (optional, at most 500 characters), `source_url`
+(the original BalkanDownload topic URL with `#entryN`), and optional `idempotency_key` (at most 200 bytes).
+The receiver strips source URL query parameters and stores a canonical HTTPS URL. It chooses the person
+and storage path itself; supplied hashes, user IDs, paths and collection IDs are not accepted.
+
+Accepted file extensions are `.epub`, `.pdf`, `.mobi`, `.azw`, `.azw3`, `.fb2`, `.djvu`, `.djv`, `.cbz`,
+and `.cbr`. `.djv` is stored as `.djvu`. File signatures/structure are verified; raw ZIP/RAR/7z downloads
+must remain in Pocket Books. The file limit is 100 MiB, or `MAX_BOOK_UPLOAD_BYTES` when smaller.
+There are at most two incoming imports, with a two-minute request deadline.
+
+A new import returns 201; the same bytes imported again by the same person return 200:
+
+```json
+{"book_id":42,"file_id":48,"book_url":"/book/42","collection":"Balkan Downloads","collection_id":7,"sha256":"…","duplicate":false,"source_url":"https://www.balkandownload.org/topic/12-title/#entry123"}
+```
+
+Library computes SHA-256 from the bytes. Each person's SHA receipt and deterministic file path survive
+retries and interrupted imports; identical bytes belonging to different people stay separate. A caller's
+idempotency key is recorded for provenance, but never replaces content hashing. `GET /books/{id}` adds
+`provenance` with `source_app`, `source_url`, `original_name`, `imported_at`, `sha256`, and receipt IDs.
+The book page links to the original post. The first successful source attribution is preserved on retry.
+
+The receiver creates the owner's manual **Balkan Downloads** shelf and private library. If a smart shelf
+already has that name, it returns 409 so the owner can rename that shelf; it never changes the user's filter.
+Malformed files/metadata return 400, unavailable authorization 401/403, oversized files 413, and a busy
+catalogue 429 with `Retry-After`. An interrupted storage operation returns 500 and can be retried safely.
+An import performs no external metadata lookup, notification, sorting, archive extraction or shared scan.
+
+Private library definitions cannot be edited/deleted or used as generic move destinations. Shared scans,
+bulk metadata lookup, tag cleanup and tag rules exclude them. Owners can use the normal per-book editing,
+reading and download tools. Generic library paths may not overlap the reserved import storage tree.
+
 ## E-readers (outside `/api/v1`)
 
 | | |
@@ -94,6 +134,7 @@ libraries open to everyone plus the ones they were given.
 ## Pocket Core
 
 Pocket Library registers as `library`, publishes `library.started`, `library.finished`,
-`library.highlighted`, `library.sent` (each with `user_email`), and offers two scopes to other Pocket apps:
+`library.highlighted`, `library.sent` (each with `user_email`), and offers scopes to other Pocket apps:
 `reading:read` (feed, current, sessions, reads, annotations, stats, day, dashboard) and `library:read` (books,
-covers). It uses Pocket Bookshelf's `books:read` to show your rating there on a book's page.
+covers), plus `library:import` for Pocket Books' private ebook import above. It uses Pocket Bookshelf's
+`books:read` to show your rating there on a book's page.
