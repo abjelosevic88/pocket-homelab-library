@@ -688,5 +688,6 @@ func (s *Server) handleImportClippings(w http.ResponseWriter, r *http.Request) {
 	if res.Counts["new"] > 0 {
 		s.publish(ctx, u, "library.highlighted", "kindle", map[string]any{"count": res.Counts["new"], "source": "kindle", "books": res.Counts["books"]})
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"dry": dry, "counts": res.Counts, "books": matched, "unmatched": res.Unmatched})
+	writeJSON(w, http.StatusOK, map[string]any{"dry": dry, "counts": res.Counts, "books": matched, "unmatched": res.Unmatched,
+		"imported": res.Counts["new"], "already": res.Counts["updated"]})
 }

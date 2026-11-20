@@ -408,7 +408,7 @@ function Data() {
   const [busy, setBusy] = useState(false)
   const importJSON = async (file: File) => {
     setBusy(true)
-    try { const r = await api.post<Record<string, number>>(`${V1}/import`, JSON.parse(await file.text())); toast('Imported: ' + (Object.entries(r).map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(', ') || 'nothing new')) } catch (e) { toast(errMsg(e), 'err') } finally { setBusy(false) }
+    try { const r = await api.post<Record<string, unknown>>(`${V1}/import`, JSON.parse(await file.text())); toast('Imported: ' + (Object.entries(r).filter(([k, v]) => typeof v === 'number' && v > 0 && k !== 'matched').map(([k, v]) => `${v} ${k.replace(/_/g, ' ')}`).join(', ') || 'nothing new')) } catch (e) { toast(errMsg(e), 'err') } finally { setBusy(false) }
   }
   return (
     <div className="stack loose">

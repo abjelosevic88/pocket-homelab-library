@@ -86,6 +86,7 @@ func (s *Server) Router() http.Handler {
 				api.Get("/backup", s.handleBackup)
 				api.Get("/export.json", s.handleExportJSON)
 				api.Post("/import", s.handleImportJSON)
+				api.Get(strings.TrimPrefix(core.PortablePath, "/api/v1"), portable.Handler())
 
 				s.routesCatalog(api)
 				s.routesScan(api)

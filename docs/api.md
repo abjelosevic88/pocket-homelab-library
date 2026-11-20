@@ -82,7 +82,8 @@ when another person is an administrator. Their collection and original forum sou
 | `GET /import/sources` | Which old apps are mounted |
 | `POST /import/calibre-web?dry=1` · `POST /import/kavita?dry=1` | Kindle addresses, the mail account, shelves, read status / progress, ratings, collections, reading lists (admins) |
 | `POST /import/kindle-clippings` | `My Clippings.txt` → highlights (everyone) |
-| `GET /export.json` · `POST /import` | Your own reading as JSON |
+| `GET /export.json` · `POST /import` | Your own reading as JSON; the import only adds (a second run adds nothing) and answers its counts at the top level too |
+| `GET /pocket/portable` | Pocket Move can copy your reading out (that JSON, your highlights as Markdown) and bring it in (that JSON, Kindle clippings): exports under the link scope `move:export`, imports under `move:import` |
 
 ### Pocket Books ebook import
 

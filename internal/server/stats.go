@@ -658,12 +658,20 @@ func (s *Server) handleImportJSON(w http.ResponseWriter, r *http.Request) {
 			unmatched = append(unmatched, e.Title)
 			continue
 		}
-		counts["books"]++
+		counts["matched"]++
 		if e.State != nil {
 			cur, _ := s.store.GetUserBook(ctx, u.ID, id)
 			if cur.UpdatedAt == "" || cur.UpdatedAt < e.State.UpdatedAt {
+				counts["books"]++
 				if e.State.Status != "" && e.State.Status != cur.Status {
-					_, _, _ = s.store.SetStatus(ctx, u.ID, id, e.State.Status, "")
+					// finished on the day it was finished, not the day it moved
+					day := ""
+					for _, rd := range e.Reads {
+						if rd.Status == e.State.Status && rd.Day > day && validDate(rd.Day) {
+							day = rd.Day
+						}
+					}
+					_, _, _ = s.store.SetStatus(ctx, u.ID, id, e.State.Status, day)
 				}
 				r, f, h := e.State.Rating, e.State.Favorite, e.State.Hidden
 				_, _ = s.store.UpdateUserBook(ctx, u.ID, id, &r, &f, &h)
@@ -699,5 +707,10 @@ func (s *Server) handleImportJSON(w http.ResponseWriter, r *http.Request) {
 			_ = s.store.AddToShelf(ctx, u.ID, ns.ID, ids)
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"counts": counts, "unmatched": unmatched})
+	// the counts nested (for the page) and at the top level (what Pocket Move shows)
+	out := map[string]any{"counts": counts, "unmatched": unmatched}
+	for k, v := range counts {
+		out[k] = v
+	}
+	writeJSON(w, http.StatusOK, out)
 }

@@ -33,6 +33,20 @@ var linkUses = []core.Use{
 	requestsUse,         // Get it: the audiobook, another language, more by the author
 }
 
+// portable is what Pocket Move may copy out and bring in for a person
+// (docs/move.md in pocket-homelab-core); Register adds move:export/import.
+// The books themselves are the box's; what moves is the person's reading.
+var portable = &core.Portable{
+	Exports: []core.PortableExport{
+		{Path: "/api/v1/export.json", File: "library.json", Kind: core.KindPocket, Title: "Your reading: where you are in each book, ratings, books you finished, reading time, highlights and shelves (the books named by title, author and ISBN)"},
+		{Path: "/api/v1/annotations/export", File: "highlights.md", Kind: core.KindMarkdown, Title: "Your highlights and notes, book by book"},
+	},
+	Imports: []core.PortableImport{
+		{Path: "/api/v1/import", Kind: core.KindPocket, ContentType: "application/json", Title: "Brings your reading back for the books this library has (matched by ISBN, else title and author); what you already have is left alone"},
+		{Path: "/api/v1/import/kindle-clippings", Kind: "kindle-clippings", Form: "file", MaxBytes: 64 << 20, Title: "Adds the highlights and notes from a Kindle's My Clippings.txt to the books this library has; a second run adds nothing"},
+	},
+}
+
 type linkRoute struct {
 	methods string
 	path    *regexp.Regexp
@@ -54,6 +68,9 @@ var errLinkScope = errors.New("outside the link's scope")
 
 // linkAllows reports whether a link token with these scopes may make this request.
 func linkAllows(scopes []string, r *http.Request) bool {
+	if portable.LinkAllows(scopes, r) {
+		return true
+	}
 	for _, lr := range linkRoutes {
 		if !strings.Contains(" "+lr.methods+" ", " "+r.Method+" ") || !lr.path.MatchString(r.URL.Path) {
 			continue
