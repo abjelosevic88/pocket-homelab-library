@@ -27,11 +27,15 @@ RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache
 # poppler-utils gives PDF covers and page counts.
 FROM debian:bookworm-slim
 ARG WITH_CALIBRE=false
+# The newest calibre wants a newer C library (glibc 2.38) than this Debian has
+# (2.36) and its installer then stops the build. 9.18.0 is the last one known
+# to run here; move both to a newer Debian and calibre together.
+ARG CALIBRE_VERSION=9.18.0
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ca-certificates tzdata curl poppler-utils \
  && if [ "$WITH_CALIBRE" = "true" ]; then \
       apt-get install -y --no-install-recommends xz-utils python3 libegl1 libopengl0 libglx0 libxcb-cursor0 libxkbcommon0 libnss3 libfontconfig1 libfreetype6 libxdamage1 libxrandr2 libxcomposite1 libxtst6 libxkbfile1 libasound2 \
-      && curl -fsSL https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin install_dir=/opt isolated=y \
+      && curl -fsSL https://download.calibre-ebook.com/linux-installer.sh | sh /dev/stdin install_dir=/opt isolated=y version=$CALIBRE_VERSION \
       && ln -s /opt/calibre/ebook-convert /usr/local/bin/ebook-convert \
       && apt-get purge -y xz-utils && apt-get autoremove -y; \
     fi \
