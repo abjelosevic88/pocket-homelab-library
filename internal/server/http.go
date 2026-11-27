@@ -87,6 +87,10 @@ func (s *Server) Router() http.Handler {
 				api.Get("/export.json", s.handleExportJSON)
 				api.Post("/import", s.handleImportJSON)
 				api.Get(strings.TrimPrefix(core.PortablePath, "/api/v1"), portable.Handler())
+				// what Pocket Search, Pocket Day and Pocket Hub ask (capabilities.go)
+				api.Get("/pocket/search", core.SearchHandler(s.pocketSearch))
+				api.Get("/pocket/day/{date}", core.DayHandler(s.pocketDay))
+				api.Get("/pocket/widget", core.WidgetHandler(s.pocketWidget))
 
 				s.routesCatalog(api)
 				s.routesScan(api)

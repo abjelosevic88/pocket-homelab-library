@@ -139,3 +139,17 @@ Pocket Library registers as `library`, publishes `library.started`, `library.fin
 `reading:read` (feed, current, sessions, reads, annotations, stats, day, dashboard) and `library:read` (books,
 covers), plus `library:import` for Pocket Books' private ebook import above. It uses Pocket Bookshelf's
 `books:read` to show your rating there on a book's page.
+
+### Search, Day and Hub
+
+Library says in its manifest (category `Media`) that it can be searched, has a day and a widget, and answers on
+the routes every Pocket app uses for that (`docs/capabilities.md` in pocket-homelab-core). Each `pocket:*` scope
+opens its one route and nothing else: not covers, and `reading:read` and `library:read` do not open these
+routes. They also answer your own session or token, and work without Pocket Core. Nothing is changed by them.
+There is no `pocket:capture`: a book here is a file.
+
+| Scope | | |
+|---|---|---|
+| `pocket:search` | `GET /pocket/search?q=&limit=` | `{items: [{id, title, snippet, kind, date, url: "/book/{id}", score}]}`. The books `GET /books?q=` finds (title, author, series, publisher, tag, description, ISBN) in the libraries you browse, books you hid left out. `kind` is `book`, `comic` or `manga`; `snippet` is the author, the series and where you are ("Brian K. Vaughan · Saga #1 · page 40 of 320", "read", "want to read"), with the publisher or ISBN when that is what matched; `date` is when you last read it, else when it was added. A title that has the words comes first, then an author or a series. `limit` 1–50, 8 by default. Words without a letter or a digit find nothing. Bangs in Pocket Search: `!lib`, `!library`, `!ebook`. |
+| `pocket:day` | `GET /pocket/day/{YYYY-MM-DD}?tz=` | `{date, summary, items: [{id, time, end, title, sub, kind, minutes, qty, done, url}], metrics}`. One item for each book you read that day (the reading sessions `/day/{date}` adds up): `minutes`, `qty` = pages, `sub` = the author, `time`/`end` the first start and the last end. `kind` is `read`, `finished` (`done: true`, also for a book marked finished without reading that day) or `added` for a book that came into the libraries you browse (the newest 12; the summary counts them all). A book shows once. `summary`: "Read Saga for 40 min (25 pages) and finished it; 2 books added"; `metrics`: Time and Pages. With `tz` the reading and the new books are placed in that time zone, else on the days the app keeps (the server's); a finished book is on the plain date it was finished. A book in a library you can no longer open is left out. No pictures: covers need a sign-in here. A day with nothing has no items and no summary. |
+| `pocket:widget` | `GET /pocket/widget` | `{line, metrics, items: [{id, title, detail, url}]}`. The top of Home: up to five books you are reading, the one read last first (`detail` "page 40 of 320", or "35%" without a page count), then the newest books ("added today · Ivo Andrić"), eight rows at most. `line`: "Reading Saga, page 40 of 320, and 1 more" (empty when nothing is in progress). `metrics`: "Read today" ("25 min", or "25 of 30 min" with a daily goal) and "Finished this year" ("7", or "7 of 24" with a yearly goal), each only when there is something to say. No books and no reading: nothing. |

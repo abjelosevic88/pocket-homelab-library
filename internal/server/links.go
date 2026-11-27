@@ -47,11 +47,27 @@ var portable = &core.Portable{
 	},
 }
 
+// capabilities is what the apps that bring everything together may ask
+// (docs/capabilities.md in pocket-homelab-core): Pocket Search finds the
+// books a person can open, Pocket Day reads what they read on a day, Pocket
+// Hub shows what they are reading. Register adds the pocket:* offers; the
+// routes are in capabilities.go. Nothing is kept from a quick line: a book
+// here is a file.
+var capabilities = core.Capabilities{
+	Search: &core.Searchable{What: "The books, comics and manga you can open here, by title, author, series and publisher", Kinds: []string{"book", "comic", "manga"}, Bangs: []string{"lib", "library", "ebook"}},
+	Day:    &core.DayFeed{Label: "Library", One: "book", Many: "books", Unit: "min", What: "The books you read that day with the minutes and pages, the ones you finished, and the books that were added"},
+	Widget: &core.Widget{Title: "Continue reading", What: "The books you are reading and where you are in each, then the newest books"},
+}
+
 type linkRoute struct {
 	methods string
 	path    *regexp.Regexp
-	scope   string // "" = any linked app
+	scope   string // "" = any linked app, anyOwnScope = any but one with only pocket:* scopes
 }
+
+// anyOwnScope opens a route to every link but one that holds only pocket:*
+// scopes: each of those opens its one route (capabilities) and nothing more.
+const anyOwnScope = "*"
 
 var linkRoutes = []linkRoute{
 	{"POST", regexp.MustCompile(`^/api/v1/imports/balkan-books$`), "library:import"},
@@ -61,21 +77,21 @@ var linkRoutes = []linkRoute{
 	{"GET", regexp.MustCompile(`^/api/v1/day/\d{4}-\d{2}-\d{2}$`), "reading:read"},
 	{"GET", regexp.MustCompile(`^/api/v1/books$`), "library:read"},
 	{"GET", regexp.MustCompile(`^/api/v1/books/\d+$`), "library:read"},
-	{"GET", regexp.MustCompile(`^/api/v1/books/\d+/cover$`), ""},
+	{"GET", regexp.MustCompile(`^/api/v1/books/\d+/cover$`), anyOwnScope},
 }
 
 var errLinkScope = errors.New("outside the link's scope")
 
 // linkAllows reports whether a link token with these scopes may make this request.
 func linkAllows(scopes []string, r *http.Request) bool {
-	if portable.LinkAllows(scopes, r) {
+	if portable.LinkAllows(scopes, r) || capabilities.LinkAllows(scopes, r) {
 		return true
 	}
 	for _, lr := range linkRoutes {
 		if !strings.Contains(" "+lr.methods+" ", " "+r.Method+" ") || !lr.path.MatchString(r.URL.Path) {
 			continue
 		}
-		if lr.scope == "" {
+		if lr.scope == "" || lr.scope == anyOwnScope && !onlyCapabilities(scopes) {
 			return true
 		}
 		for _, sc := range scopes {
@@ -85,6 +101,16 @@ func linkAllows(scopes []string, r *http.Request) bool {
 		}
 	}
 	return false
+}
+
+// onlyCapabilities reports whether a link holds pocket:* scopes and no other.
+func onlyCapabilities(scopes []string) bool {
+	for _, sc := range scopes {
+		if !strings.HasPrefix(sc, "pocket:") {
+			return false
+		}
+	}
+	return len(scopes) > 0
 }
 
 // linkUser validates a pcx_ token, checks the route against its scopes and

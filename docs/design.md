@@ -57,3 +57,6 @@ With Pocket Core, Pocket Library joins the other apps: one sign-in, events on th
   reading moves its page, highlights become quotes. Its rating and status show on the book page here.
 - **Pocket Day** and other apps can read one day of reading in a sentence (`/api/v1/day/<date>`, scope `reading:read`).
 - **Pocket Hub** and Homepage show it with its icon; `/api/v1/dashboard` feeds a Homepage widget.
+- **Pocket Search, Pocket Day and Pocket Hub** find it on their own: the manifest says it can be searched, has a
+  day and a widget, and `/api/v1/pocket/search`, `/pocket/day/<date>` and `/pocket/widget` answer in the shape
+  every Pocket app uses (scopes `pocket:search`, `pocket:day`, `pocket:widget`; see [api.md](api.md)).

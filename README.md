@@ -93,6 +93,9 @@
   progress and your highlights into quotes; each book here is linked to its entry there (add it, link it to another book
   or unlink it from the book page), its status and rating there show here, and what you set here is written there;
   events (started, finished, highlighted, sent) for anything else.
+- Pocket Search finds your books, comics and manga (`!lib`, `!library`, `!ebook`), Pocket Day writes down what
+  you read each day, which books you finished and which came in, and Pocket Hub shows what you are reading and
+  where you are in each book. Each sees only the libraries you may open and your own reading.
 - **Translate** English books into Serbian (Latin or Cyrillic) with Pocket AI: drop a file or pick a book, and
   the Serbian edition is filed into the library next to it. Translated paragraph by paragraph with the book's
   layout kept; replies are kept, so a stopped job carries on where it was. Needs the Core link

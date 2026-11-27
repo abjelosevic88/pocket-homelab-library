@@ -549,6 +549,7 @@ type BookQuery struct {
 	Order      string  `json:"order,omitempty"`
 	Offset     int     `json:"offset,omitempty"`
 	Limit      int     `json:"limit,omitempty"`
+	AddedUntil string  `json:"-"` // added before this moment (with AddedSince: one day's new books)
 	Shelf      int64   `json:"-"` // books of a hand-picked shelf
 	IDs        []int64 `json:"-"`
 	// Scope: the person asking and the libraries they may open (hidden
@@ -665,6 +666,10 @@ func (q *BookQuery) where() (string, []any) {
 	if q.AddedSince != "" {
 		conds = append(conds, "b.added_at >= ?")
 		args = append(args, q.AddedSince)
+	}
+	if q.AddedUntil != "" {
+		conds = append(conds, "b.added_at < ?")
+		args = append(args, q.AddedUntil)
 	}
 	switch q.Status {
 	case "want", "reading", "read", "dnf":
